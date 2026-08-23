@@ -1,7 +1,7 @@
 """
-Interactive GUI for PDF Document Cleaner & Bleed-Through Restorer.
+Interactive GUI for PDF Document Cleaner & AI Anomaly Restorer.
 Provides live side-by-side Before/After preview, mode selection,
-Sauvola sensitivity tuning, bleed-through dot removal, and high-DPI export.
+Sauvola sensitivity tuning, AI anomaly tracking, and high-DPI export.
 """
 
 import os
@@ -19,7 +19,7 @@ from pdf_cleaner import DocumentCleaner, CleaningMode, PDFProcessor
 class PDFCleanerGUI:
     def __init__(self, root: tk.Tk, initial_pdf: str = None):
         self.root = root
-        self.root.title("CleanPDF - Document Whitener & Bleed-Through Restorer")
+        self.root.title("CleanPDF - Document Whitener & AI Anomaly Restorer")
         self.root.geometry("1300x860")
         self.root.minsize(1024, 700)
 
@@ -39,7 +39,8 @@ class PDFCleanerGUI:
             margin_percent=0.008,
             contrast_boost=1.0,
             filter_bleedthrough=True,
-            contrast_threshold=38.0
+            contrast_threshold=38.0,
+            clean_anomalies=True
         )
         self.processor = PDFProcessor(cleaner=self.cleaner, dpi=300)
 
@@ -103,27 +104,35 @@ class PDFCleanerGUI:
                 command=self.on_mode_change
             ).pack(anchor=tk.W, pady=2)
 
-        # 2. Bleed-Through & Noise Group
-        noise_group = ttk.LabelFrame(sidebar, text=" 2. Bleed-Through & Dot Filters ", padding="8")
-        noise_group.pack(fill=tk.X, pady=(0, 8))
+        # 2. Bleed-Through & AI Anomaly Group
+        anomaly_group = ttk.LabelFrame(sidebar, text=" 2. AI Anomaly & Dot Filters ", padding="8")
+        anomaly_group.pack(fill=tk.X, pady=(0, 8))
+
+        self.anomaly_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            anomaly_group,
+            text="✨ AI Anomaly & Dot Remover",
+            variable=self.anomaly_var,
+            command=self.on_checkbox_change
+        ).pack(anchor=tk.W, pady=2)
 
         self.bleedthrough_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            noise_group,
-            text="✨ Remove Bleed-Through Ink Dots",
+            anomaly_group,
+            text="✨ Optical Bleed-Through Gating",
             variable=self.bleedthrough_var,
             command=self.on_checkbox_change
         ).pack(anchor=tk.W, pady=2)
 
         # Contrast Threshold Slider
-        self.lbl_contrast = ttk.Label(noise_group, text="Bleed-Through Filter Threshold: 38")
+        self.lbl_contrast = ttk.Label(anomaly_group, text="Bleed-Through Filter Threshold: 38")
         self.lbl_contrast.pack(anchor=tk.W, pady=(4, 0))
-        self.slider_contrast = ttk.Scale(noise_group, from_=20.0, to=65.0, value=38.0, command=self.on_slider_contrast)
+        self.slider_contrast = ttk.Scale(anomaly_group, from_=20.0, to=65.0, value=38.0, command=self.on_slider_contrast)
         self.slider_contrast.pack(fill=tk.X, pady=(0, 4))
 
         self.despeckle_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            noise_group,
+            anomaly_group,
             text="Despeckle (Salt & Pepper Noise)",
             variable=self.despeckle_var,
             command=self.on_checkbox_change
@@ -282,6 +291,7 @@ class PDFCleanerGUI:
         self.cleaner.despeckle = self.despeckle_var.get()
         self.cleaner.filter_bleedthrough = self.bleedthrough_var.get()
         self.cleaner.contrast_threshold = float(self.slider_contrast.get())
+        self.cleaner.clean_anomalies = self.anomaly_var.get()
 
         # Clean image
         self.cleaned_page_img = self.processor.clean_single_page(self.raw_page_img)

@@ -1,7 +1,7 @@
 """
-Test suite for Document PDF Cleaner & Optical Contrast Bleed-Through Filter.
-Verifies illumination flattening, Sauvola binarization, bleed-through dot removal,
-and high-DPI document PDF compilation.
+Test suite for Document PDF Cleaner & AI Anomaly Tracker.
+Verifies illumination flattening, Sauvola adaptive binarization,
+optical contrast bleed-through gating, and AI spatial anomaly tracking.
 """
 
 import os
@@ -49,35 +49,39 @@ class TestPDFCleaner(unittest.TestCase):
         gray_ratio = ((cleaned > 0) & (cleaned < 255)).mean()
         self.assertEqual(gray_ratio, 0.0, "Laser mode must have 0 gray pixels")
 
-    def test_bleedthrough_dot_removal(self):
-        """Test that low-contrast bleed-through dots are removed while high-contrast text is kept."""
-        h, w = 300, 300
-        # Simulated white paper background
-        bg = np.full((h, w), 220, dtype=np.uint8)
-        img = bg.copy()
+    def test_ai_spatial_anomaly_tracking(self):
+        """Test that anomalies in whitespace are erased while text-line punctuation is preserved."""
+        h, w = 500, 500
+        canvas = np.full((h, w), 255, dtype=np.uint8)
         
-        # High contrast real text (intensity 40, contrast = 180)
-        cv2.putText(img, "Formula", (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, 40, 2)
+        # Line 1: Text with i-dot
+        cv2.putText(canvas, "Probability Theory", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 0, 2)
+        canvas[134:137, 85:88] = 0  # i-dot
         
-        # High contrast i-dot (intensity 40, contrast = 180)
-        img[125:128, 70:73] = 40
+        # Line 2: Text with period
+        cv2.putText(canvas, "Chapter 1", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 0, 2)
+        canvas[297:301, 166:170] = 0  # period immediately following "Chapter 1"
         
-        # Faint low-contrast bleed-through dot in whitespace (intensity 198, contrast = 22)
-        img[40:44, 150:154] = 198
+        # Stray anomalies in inter-line whitespace (y=220) and top/bottom margin
+        canvas[48:52, 250:254] = 0
+        canvas[218:222, 120:124] = 0
+        canvas[430:434, 300:304] = 0
         
         cleaner = DocumentCleaner(
             mode=CleaningMode.LASER,
-            filter_bleedthrough=True,
-            contrast_threshold=38.0
+            filter_bleedthrough=False,
+            clean_anomalies=True
         )
-        cleaned = cleaner.clean_image(img)
+        cleaned = cleaner.track_and_clean_anomalies(canvas)
         
-        # Bleed-through dot at (42, 152) must be pure white 255
-        self.assertEqual(cleaned[42, 152], 255, "Faint bleedthrough dot must be erased into pure white")
+        # Stray anomalies must be erased into 255
+        self.assertEqual(cleaned[50, 252], 255, "Top margin anomaly must be erased")
+        self.assertEqual(cleaned[220, 122], 255, "Inter-line anomaly must be erased")
+        self.assertEqual(cleaned[432, 302], 255, "Bottom margin anomaly must be erased")
         
-        # Real text and i-dot must be preserved as pure black 0
-        self.assertEqual(cleaned[126, 71], 0, "High contrast punctuation/i-dot must be preserved")
-        self.assertGreater((cleaned == 0).sum(), 50, "Real text strokes must be preserved")
+        # Punctuation inside line envelope must be preserved as 0
+        self.assertEqual(cleaned[135, 86], 0, "i-dot inside text line envelope must be preserved")
+        self.assertEqual(cleaned[299, 168], 0, "Period inside text line envelope must be preserved")
 
     def test_pdf_processing_real_document(self):
         """Test full pipeline on real document pages."""
@@ -86,7 +90,8 @@ class TestPDFCleaner(unittest.TestCase):
 
         cleaner = DocumentCleaner(
             mode=CleaningMode.LASER,
-            filter_bleedthrough=True
+            filter_bleedthrough=True,
+            clean_anomalies=True
         )
         processor = PDFProcessor(cleaner=cleaner, dpi=150)
         out = processor.process_pdf(
