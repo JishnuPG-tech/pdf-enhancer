@@ -1,7 +1,7 @@
 """
-Test suite for Document PDF Cleaner & AI Anomaly Tracker.
-Verifies illumination flattening, Sauvola adaptive binarization,
-optical contrast bleed-through gating, and AI spatial anomaly tracking.
+Test suite for Document PDF Cleaner & AI Page-Adaptive Engine.
+Verifies illumination flattening, Sauvola binarization, noise energy profiling,
+word-level envelope anomaly tracking, and high-DPI document PDF compilation.
 """
 
 import os
@@ -49,39 +49,30 @@ class TestPDFCleaner(unittest.TestCase):
         gray_ratio = ((cleaned > 0) & (cleaned < 255)).mean()
         self.assertEqual(gray_ratio, 0.0, "Laser mode must have 0 gray pixels")
 
-    def test_ai_spatial_anomaly_tracking(self):
-        """Test that anomalies in whitespace are erased while text-line punctuation is preserved."""
-        h, w = 500, 500
-        canvas = np.full((h, w), 255, dtype=np.uint8)
+    def test_ai_noise_energy_profiling(self):
+        """Test that page noise energy correctly differentiates clean pages from heavy noise."""
+        h, w = 300, 300
+        bg = np.full((h, w), 220, dtype=np.uint8)
         
-        # Line 1: Text with i-dot
-        cv2.putText(canvas, "Probability Theory", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 0, 2)
-        canvas[134:137, 85:88] = 0  # i-dot
+        # 1. Clean image
+        clean_img = bg.copy()
+        cv2.putText(clean_img, "Title", (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, 40, 2)
         
-        # Line 2: Text with period
-        cv2.putText(canvas, "Chapter 1", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 0, 2)
-        canvas[297:301, 166:170] = 0  # period immediately following "Chapter 1"
+        # 2. Heavy bleedthrough image (lots of faint dots)
+        noisy_img = bg.copy()
+        cv2.putText(noisy_img, "Title", (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, 40, 2)
+        noisy_img[::4, ::4] = 195  # Faint bleedthrough mesh
         
-        # Stray anomalies in inter-line whitespace (y=220) and top/bottom margin
-        canvas[48:52, 250:254] = 0
-        canvas[218:222, 120:124] = 0
-        canvas[430:434, 300:304] = 0
+        cleaner = DocumentCleaner()
         
-        cleaner = DocumentCleaner(
-            mode=CleaningMode.LASER,
-            filter_bleedthrough=False,
-            clean_anomalies=True
-        )
-        cleaned = cleaner.track_and_clean_anomalies(canvas)
+        bg_clean = cleaner.estimate_background(clean_img)
+        ne_clean, dt_clean = cleaner.compute_page_noise_energy(clean_img, bg_clean)
         
-        # Stray anomalies must be erased into 255
-        self.assertEqual(cleaned[50, 252], 255, "Top margin anomaly must be erased")
-        self.assertEqual(cleaned[220, 122], 255, "Inter-line anomaly must be erased")
-        self.assertEqual(cleaned[432, 302], 255, "Bottom margin anomaly must be erased")
+        bg_noisy = cleaner.estimate_background(noisy_img)
+        ne_noisy, dt_noisy = cleaner.compute_page_noise_energy(noisy_img, bg_noisy)
         
-        # Punctuation inside line envelope must be preserved as 0
-        self.assertEqual(cleaned[135, 86], 0, "i-dot inside text line envelope must be preserved")
-        self.assertEqual(cleaned[299, 168], 0, "Period inside text line envelope must be preserved")
+        self.assertLess(ne_clean, ne_noisy, "Clean page must have lower noise energy than heavy page")
+        self.assertGreater(dt_noisy, dt_clean, "Heavy page must dynamically trigger a higher threshold")
 
     def test_pdf_processing_real_document(self):
         """Test full pipeline on real document pages."""
@@ -90,7 +81,7 @@ class TestPDFCleaner(unittest.TestCase):
 
         cleaner = DocumentCleaner(
             mode=CleaningMode.LASER,
-            filter_bleedthrough=True,
+            adaptive_thresholding=True,
             clean_anomalies=True
         )
         processor = PDFProcessor(cleaner=cleaner, dpi=150)

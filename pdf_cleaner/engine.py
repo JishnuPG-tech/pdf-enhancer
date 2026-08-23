@@ -1,8 +1,8 @@
 """
 Core document cleaning and binarization engine.
 Handles non-uniform lighting normalization, adaptive Sauvola binarization,
-optical contrast physics gating, AI spatial text-ribbon anomaly tracking,
-contrast curves, safe despeckling, and margin crop.
+AI per-page noise energy profiling, dynamic contrast thresholding,
+tightly-coupled word-level envelope tracking, and safe margin crop.
 """
 
 import cv2
@@ -32,7 +32,8 @@ class DocumentCleaner:
         contrast_boost: float = 1.0,
         filter_bleedthrough: bool = True,
         contrast_threshold: float = 38.0,
-        clean_anomalies: bool = True
+        clean_anomalies: bool = True,
+        adaptive_thresholding: bool = True
     ):
         if isinstance(mode, str):
             mode = CleaningMode(mode.lower())
@@ -48,6 +49,7 @@ class DocumentCleaner:
         self.filter_bleedthrough = filter_bleedthrough
         self.contrast_threshold = contrast_threshold
         self.clean_anomalies = clean_anomalies
+        self.adaptive_thresholding = adaptive_thresholding
 
     def estimate_background(self, gray: np.ndarray) -> np.ndarray:
         """
@@ -73,6 +75,22 @@ class DocumentCleaner:
         norm = 255.0 * (gray.astype(np.float32) / (bg.astype(np.float32) + 1e-5))
         return np.clip(norm, 0, 255).astype(np.uint8)
 
+    def compute_page_noise_energy(self, gray: np.ndarray, bg: np.ndarray) -> Tuple[float, float]:
+        """
+        AI Page Profiler: Measures background noise energy & computes dynamic optical cutoff.
+        """
+        h, w = gray.shape
+        contrast_diff = bg.astype(np.float32) - gray.astype(np.float32)
+        faint_pixels = ((contrast_diff >= 12.0) & (contrast_diff <= 45.0)).sum()
+        noise_energy = (faint_pixels / float(h * w)) * 100.0
+        
+        if self.adaptive_thresholding:
+            dynamic_thresh = min(58.0, max(36.0, 36.0 + noise_energy * 0.55))
+        else:
+            dynamic_thresh = self.contrast_threshold
+            
+        return noise_energy, dynamic_thresh
+
     def apply_sauvola(self, norm: np.ndarray) -> np.ndarray:
         """
         High-speed vectorized Sauvola adaptive binarization for document text.
@@ -93,52 +111,21 @@ class DocumentCleaner:
         binary = np.where(norm_f < thresh, 0, 255).astype(np.uint8)
         return binary
 
-    def filter_bleedthrough_dots(
+    def filter_bleedthrough_and_anomalies_adaptive(
         self,
         binary_img: np.ndarray,
         gray_img: np.ndarray,
-        bg_img: np.ndarray
+        bg_img: np.ndarray,
+        dynamic_thresh: float
     ) -> np.ndarray:
         """
-        Optical contrast physics discriminator:
-        Eliminates faint reverse-side bleed-through ink dots that lie in whitespace between lines,
-        while strictly protecting all real high-contrast text, math symbols, and punctuation.
+        AI Page-Adaptive Word-Level Envelope & Anomaly Classifier:
+        1. Builds tightly-coupled word envelopes around legitimate character clusters.
+        2. Whitelists high-contrast characters, formula symbols, and word-level punctuation.
+        3. Erases faint reverse-side ink dots, margin noise, and inter-word anomalies into pure #FFFFFF.
         """
         h, w = binary_img.shape
         contrast_diff = bg_img.astype(np.float32) - gray_img.astype(np.float32)
-
-        inv = 255 - binary_img
-        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(inv, connectivity=8)
-        clean = np.full_like(binary_img, 255)
-
-        for i in range(1, num_labels):
-            area = stats[i, cv2.CC_STAT_AREA]
-            cw = stats[i, cv2.CC_STAT_WIDTH]
-            ch = stats[i, cv2.CC_STAT_HEIGHT]
-
-            mask = (labels == i)
-            comp_contrast = np.mean(contrast_diff[mask])
-            max_contrast = np.max(contrast_diff[mask])
-
-            if area >= 30:
-                clean[mask] = 0
-            elif area <= 25 and cw <= 12 and ch <= 12:
-                if max_contrast >= self.contrast_threshold or comp_contrast >= (self.contrast_threshold * 0.75):
-                    clean[mask] = 0
-            elif area > 2:
-                if max_contrast >= (self.contrast_threshold * 0.8):
-                    clean[mask] = 0
-
-        return clean
-
-    def track_and_clean_anomalies(self, binary_img: np.ndarray) -> np.ndarray:
-        """
-        AI Spatial Text-Ribbon & Anomaly Tracking Classifier:
-        Builds continuous morphological line envelopes along legitimate character clusters.
-        Components residing within text line envelopes (i-dots, accents, decimals, punctuation)
-        are 100% PRESERVED, while components floating in whitespace voids are ERASED to pure white.
-        """
-        h, w = binary_img.shape
         inv = 255 - binary_img
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(inv, connectivity=8)
 
@@ -151,17 +138,18 @@ class DocumentCleaner:
             a = stats[i, cv2.CC_STAT_AREA]
             cw = stats[i, cv2.CC_STAT_WIDTH]
             ch = stats[i, cv2.CC_STAT_HEIGHT]
-            if a >= 35 or (cw >= 8 and ch >= 12):
-                char_mask[labels == i] = 255
+            mask = (labels == i)
+            max_c = np.max(contrast_diff[mask])
 
-        # Step 2: Form continuous horizontal text line ribbons & envelopes
-        kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (max(25, int(w / 22)), 5))
-        line_ribbons = cv2.dilate(char_mask, kernel_h, iterations=2)
-        kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 16))
-        text_line_envelope = cv2.dilate(line_ribbons, kernel_v, iterations=1)
+            if (a >= 35 or (cw >= 8 and ch >= 12)) and max_c >= 45.0:
+                char_mask[mask] = 255
+
+        # Step 2: Tightly-coupled word-level envelopes (15px horizontal, 7px vertical)
+        kernel_word = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 7))
+        word_envelope = cv2.dilate(char_mask, kernel_word, iterations=2)
 
         # Step 3: Classify and purify every component
-        purified = np.full_like(binary_img, 255)
+        clean = np.full_like(binary_img, 255)
 
         for i in range(1, num_labels):
             a = stats[i, cv2.CC_STAT_AREA]
@@ -169,21 +157,33 @@ class DocumentCleaner:
             ch = stats[i, cv2.CC_STAT_HEIGHT]
             cx = int(centroids[i][0])
             cy = int(centroids[i][1])
-
             mask = (labels == i)
 
-            if a >= 40:
-                purified[mask] = 0
+            comp_contrast = np.mean(contrast_diff[mask])
+            max_contrast = np.max(contrast_diff[mask])
+
+            if a >= 40 and max_contrast >= 40.0:
+                # Substantial character stroke
+                clean[mask] = 0
             elif a <= 2:
+                # Micro speckle noise
                 pass
             else:
+                # Small component (3-39px): check spatial word membership & optical contrast
                 cx_c = min(w - 1, max(0, cx))
                 cy_c = min(h - 1, max(0, cy))
 
-                if text_line_envelope[cy_c, cx_c] == 255:
-                    purified[mask] = 0
+                is_inside_word = (word_envelope[cy_c, cx_c] == 255)
 
-        return purified
+                if is_inside_word and max_contrast >= (dynamic_thresh * 0.7):
+                    # Legitimate punctuation (i-dot, period, comma, decimal, math symbol)
+                    clean[mask] = 0
+                elif max_contrast >= dynamic_thresh:
+                    # High contrast standalone symbol
+                    clean[mask] = 0
+                # Otherwise, faint bleed-through dot / inter-word anomaly -> Erased to 255
+
+        return clean
 
     def remove_speckles(self, binary: np.ndarray) -> np.ndarray:
         """
@@ -252,11 +252,11 @@ class DocumentCleaner:
 
     def clean_image(self, img: np.ndarray) -> np.ndarray:
         """
-        Runs the full document cleaning pipeline on a single image:
+        Runs the AI Page-Adaptive Document Cleaning Pipeline:
         1. Background Illumination Normalization
-        2. Sauvola Adaptive Binarization
-        3. Optical Contrast Physics Bleed-Through Gating
-        4. AI Spatial Text-Ribbon Anomaly Purification
+        2. AI Noise Energy Profiling & Dynamic Thresholding
+        3. Sauvola Adaptive Binarization
+        4. Tightly-Coupled Word-Level Envelope & Anomaly Purification
         5. Safe Margin Clearance
         """
         is_color = (len(img.shape) == 3 and img.shape[2] == 3)
@@ -264,17 +264,14 @@ class DocumentCleaner:
 
         bg = self.estimate_background(gray)
         norm = self.normalize_illumination(gray, bg)
+        noise_energy, dynamic_thresh = self.compute_page_noise_energy(gray, bg)
 
         if self.mode == CleaningMode.LASER:
             result = self.apply_sauvola(norm)
             
-            # Step 3: Optical contrast-gated bleed-through dot removal
-            if self.filter_bleedthrough:
-                result = self.filter_bleedthrough_dots(result, gray, bg)
-
-            # Step 4: AI Spatial Text-Ribbon Anomaly Purification
-            if self.clean_anomalies:
-                result = self.track_and_clean_anomalies(result)
+            # AI Page-Adaptive Bleed-Through & Anomaly Purification
+            if self.filter_bleedthrough or self.clean_anomalies:
+                result = self.filter_bleedthrough_and_anomalies_adaptive(result, gray, bg, dynamic_thresh)
                 
             if self.despeckle:
                 result = self.remove_speckles(result)
@@ -291,10 +288,8 @@ class DocumentCleaner:
             result = cv2.adaptiveThreshold(
                 norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, win, 12
             )
-            if self.filter_bleedthrough:
-                result = self.filter_bleedthrough_dots(result, gray, bg)
-            if self.clean_anomalies:
-                result = self.track_and_clean_anomalies(result)
+            if self.filter_bleedthrough or self.clean_anomalies:
+                result = self.filter_bleedthrough_and_anomalies_adaptive(result, gray, bg, dynamic_thresh)
             if self.despeckle:
                 result = self.remove_speckles(result)
             result = self.crop_margins(result)

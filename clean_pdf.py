@@ -57,7 +57,7 @@ def main():
 Examples:
   python clean_pdf.py "RATIO & Proportion.pdf"
   python clean_pdf.py document.pdf -o cleaned.pdf --mode laser --dpi 300
-  python clean_pdf.py book.pdf --no-anomalies
+  python clean_pdf.py book.pdf --no-adaptive
   python clean_pdf.py book.pdf --pages 1-10
   python clean_pdf.py --gui
         """
@@ -80,7 +80,8 @@ Examples:
     parser.add_argument("--min-speckle", type=int, default=3, help="Minimum connected component pixel size to keep (default: 3)")
     parser.add_argument("--no-bleedthrough", action="store_true", help="Disable optical contrast bleed-through dot removal")
     parser.add_argument("--no-anomalies", action="store_true", help="Disable AI spatial anomaly tracking")
-    parser.add_argument("--contrast-thresh", type=float, default=38.0, help="Optical contrast threshold for bleed-through dot elimination (default: 38.0)")
+    parser.add_argument("--no-adaptive", action="store_true", help="Disable AI per-page adaptive noise energy profiling")
+    parser.add_argument("--contrast-thresh", type=float, default=38.0, help="Static optical contrast threshold (default: 38.0)")
     parser.add_argument("--margin", type=float, default=0.008, help="Outer margin shadow crop fraction (default: 0.008 = 0.8%%)")
     parser.add_argument("--contrast", type=float, default=1.0, help="Contrast boost power (default: 1.0)")
     parser.add_argument("-p", "--pages", help="Specific pages to process, e.g. '1-5', '1,3,7-10'")
@@ -112,14 +113,14 @@ Examples:
         args.output = f"{base}_cleaned.pdf"
 
     print("=" * 60)
-    print("  Document PDF Cleaner & AI Anomaly Tracker")
+    print("  Document PDF Cleaner & AI Adaptive Restorer")
     print("=" * 60)
     print(f"Input PDF          : {args.input}")
     print(f"Output PDF         : {args.output}")
     print(f"Mode               : {args.mode.upper()}")
     print(f"DPI                : {args.dpi}")
-    print(f"Bleed-Through Dots : {'Disabled' if args.no_bleedthrough else f'Enabled (Threshold: {args.contrast_thresh})'}")
-    print(f"AI Anomaly Tracker : {'Disabled' if args.no_anomalies else 'Enabled (Spatial Text Ribbon Protection)'}")
+    print(f"AI Page Profiler   : {'Disabled (Static)' if args.no_adaptive else 'Enabled (Dynamic Per-Page Energy Profiling)'}")
+    print(f"Bleed-Through Dots : {'Disabled' if args.no_bleedthrough else 'Enabled (Word-Level Envelopes)'}")
     print(f"Despeckle          : {'Disabled' if args.no_despeckle else f'Enabled (min size: {args.min_speckle})'}")
     print(f"Margin Crop        : {args.margin * 100:.1f}%")
     print("-" * 60)
@@ -136,7 +137,8 @@ Examples:
         contrast_boost=args.contrast,
         filter_bleedthrough=not args.no_bleedthrough,
         contrast_threshold=args.contrast_thresh,
-        clean_anomalies=not args.no_anomalies
+        clean_anomalies=not args.no_anomalies,
+        adaptive_thresholding=not args.no_adaptive
     )
 
     processor = PDFProcessor(cleaner=cleaner, dpi=args.dpi)

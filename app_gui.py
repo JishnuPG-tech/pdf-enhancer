@@ -1,7 +1,7 @@
 """
-Interactive GUI for PDF Document Cleaner & AI Anomaly Restorer.
+Interactive GUI for PDF Document Cleaner & AI Adaptive Restorer.
 Provides live side-by-side Before/After preview, mode selection,
-Sauvola sensitivity tuning, AI anomaly tracking, and high-DPI export.
+AI page-adaptive noise profiling, word-level envelope tracking, and high-DPI export.
 """
 
 import os
@@ -19,7 +19,7 @@ from pdf_cleaner import DocumentCleaner, CleaningMode, PDFProcessor
 class PDFCleanerGUI:
     def __init__(self, root: tk.Tk, initial_pdf: str = None):
         self.root = root
-        self.root.title("CleanPDF - Document Whitener & AI Anomaly Restorer")
+        self.root.title("CleanPDF - Document Whitener & AI Adaptive Restorer")
         self.root.geometry("1300x860")
         self.root.minsize(1024, 700)
 
@@ -40,7 +40,8 @@ class PDFCleanerGUI:
             contrast_boost=1.0,
             filter_bleedthrough=True,
             contrast_threshold=38.0,
-            clean_anomalies=True
+            clean_anomalies=True,
+            adaptive_thresholding=True
         )
         self.processor = PDFProcessor(cleaner=self.cleaner, dpi=300)
 
@@ -104,31 +105,25 @@ class PDFCleanerGUI:
                 command=self.on_mode_change
             ).pack(anchor=tk.W, pady=2)
 
-        # 2. Bleed-Through & AI Anomaly Group
-        anomaly_group = ttk.LabelFrame(sidebar, text=" 2. AI Anomaly & Dot Filters ", padding="8")
+        # 2. AI Adaptive & Anomaly Group
+        anomaly_group = ttk.LabelFrame(sidebar, text=" 2. AI Adaptive Dot & Noise Filters ", padding="8")
         anomaly_group.pack(fill=tk.X, pady=(0, 8))
+
+        self.adaptive_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            anomaly_group,
+            text="🧠 AI Per-Page Dynamic Auto-Tuner",
+            variable=self.adaptive_var,
+            command=self.on_checkbox_change
+        ).pack(anchor=tk.W, pady=2)
 
         self.anomaly_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
             anomaly_group,
-            text="✨ AI Anomaly & Dot Remover",
+            text="✨ Word-Level Envelope Protection",
             variable=self.anomaly_var,
             command=self.on_checkbox_change
         ).pack(anchor=tk.W, pady=2)
-
-        self.bleedthrough_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            anomaly_group,
-            text="✨ Optical Bleed-Through Gating",
-            variable=self.bleedthrough_var,
-            command=self.on_checkbox_change
-        ).pack(anchor=tk.W, pady=2)
-
-        # Contrast Threshold Slider
-        self.lbl_contrast = ttk.Label(anomaly_group, text="Bleed-Through Filter Threshold: 38")
-        self.lbl_contrast.pack(anchor=tk.W, pady=(4, 0))
-        self.slider_contrast = ttk.Scale(anomaly_group, from_=20.0, to=65.0, value=38.0, command=self.on_slider_contrast)
-        self.slider_contrast.pack(fill=tk.X, pady=(0, 4))
 
         self.despeckle_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
@@ -147,6 +142,12 @@ class PDFCleanerGUI:
         self.lbl_k.pack(anchor=tk.W)
         self.slider_k = ttk.Scale(tuning_group, from_=0.05, to=0.35, value=0.15, command=self.on_slider_k)
         self.slider_k.pack(fill=tk.X, pady=(0, 6))
+
+        # Base Contrast Threshold Slider
+        self.lbl_contrast = ttk.Label(tuning_group, text="Base Optical Threshold: 38")
+        self.lbl_contrast.pack(anchor=tk.W, pady=(4, 0))
+        self.slider_contrast = ttk.Scale(tuning_group, from_=20.0, to=65.0, value=38.0, command=self.on_slider_contrast)
+        self.slider_contrast.pack(fill=tk.X, pady=(0, 6))
 
         # White Level Slider
         self.lbl_white = ttk.Label(tuning_group, text="White Cutoff: 210")
@@ -289,9 +290,9 @@ class PDFCleanerGUI:
         self.cleaner.white_cutoff = int(self.slider_white.get())
         self.cleaner.black_cutoff = int(self.slider_black.get())
         self.cleaner.despeckle = self.despeckle_var.get()
-        self.cleaner.filter_bleedthrough = self.bleedthrough_var.get()
-        self.cleaner.contrast_threshold = float(self.slider_contrast.get())
+        self.cleaner.adaptive_thresholding = self.adaptive_var.get()
         self.cleaner.clean_anomalies = self.anomaly_var.get()
+        self.cleaner.contrast_threshold = float(self.slider_contrast.get())
 
         # Clean image
         self.cleaned_page_img = self.processor.clean_single_page(self.raw_page_img)
@@ -340,7 +341,7 @@ class PDFCleanerGUI:
         self.on_slider_change()
 
     def on_slider_contrast(self, val):
-        self.lbl_contrast.config(text=f"Bleed-Through Filter Threshold: {float(val):.0f}")
+        self.lbl_contrast.config(text=f"Base Optical Threshold: {float(val):.0f}")
         self.on_slider_change()
 
     def on_mode_change(self):
