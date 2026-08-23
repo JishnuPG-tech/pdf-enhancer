@@ -1,13 +1,14 @@
 """
 Core document cleaning and binarization engine.
 Handles non-uniform lighting normalization, adaptive Sauvola binarization,
-contrast curves, safe despeckling, and margin crop.
+optical contrast-gated bleed-through dot removal, contrast curves,
+safe despeckling, and margin crop.
 """
 
 import cv2
 import numpy as np
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 
 class CleaningMode(str, Enum):
@@ -29,7 +30,8 @@ class DocumentCleaner:
         min_speckle_size: int = 3,
         margin_percent: float = 0.008,
         contrast_boost: float = 1.0,
-        deskew: bool = False
+        filter_bleedthrough: bool = True,
+        contrast_threshold: float = 38.0
     ):
         if isinstance(mode, str):
             mode = CleaningMode(mode.lower())
@@ -42,7 +44,8 @@ class DocumentCleaner:
         self.min_speckle_size = min_speckle_size
         self.margin_percent = margin_percent
         self.contrast_boost = contrast_boost
-        self.deskew = deskew
+        self.filter_bleedthrough = filter_bleedthrough
+        self.contrast_threshold = contrast_threshold
 
     def estimate_background(self, gray: np.ndarray) -> np.ndarray:
         """
@@ -87,6 +90,48 @@ class DocumentCleaner:
         thresh = mean * (1.0 + self.sauvola_k * (std / 128.0 - 1.0))
         binary = np.where(norm_f < thresh, 0, 255).astype(np.uint8)
         return binary
+
+    def filter_bleedthrough_dots(
+        self,
+        binary_img: np.ndarray,
+        gray_img: np.ndarray,
+        bg_img: np.ndarray
+    ) -> np.ndarray:
+        """
+        Optical contrast physics discriminator:
+        Eliminates faint reverse-side bleed-through ink dots that lie in whitespace between lines,
+        while strictly protecting all real high-contrast text, math symbols, and punctuation.
+        """
+        h, w = binary_img.shape
+        contrast_diff = bg_img.astype(np.float32) - gray_img.astype(np.float32)
+
+        inv = 255 - binary_img
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(inv, connectivity=8)
+        clean = np.full_like(binary_img, 255)
+
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            cw = stats[i, cv2.CC_STAT_WIDTH]
+            ch = stats[i, cv2.CC_STAT_HEIGHT]
+
+            mask = (labels == i)
+            comp_contrast = np.mean(contrast_diff[mask])
+            max_contrast = np.max(contrast_diff[mask])
+
+            # Legitimate characters have high optical contrast or substantial connected area
+            if area >= 30:
+                clean[mask] = 0
+            elif area <= 25 and cw <= 12 and ch <= 12:
+                # Small dot candidate: check optical contrast
+                if max_contrast >= self.contrast_threshold or comp_contrast >= (self.contrast_threshold * 0.75):
+                    # High contrast real punctuation/i-dot -> Preserved!
+                    clean[mask] = 0
+                # Otherwise, faint bleed-through dot -> Erased into pure white 255
+            elif area > 2:
+                if max_contrast >= (self.contrast_threshold * 0.8):
+                    clean[mask] = 0
+
+        return clean
 
     def remove_speckles(self, binary: np.ndarray) -> np.ndarray:
         """
@@ -155,8 +200,9 @@ class DocumentCleaner:
 
     def clean_image(self, img: np.ndarray) -> np.ndarray:
         """
-        Runs the clean Phase 1 pipeline on a single image.
-        Preserves authentic page geometry, aspect ratio, and layout naturally.
+        Runs the enhanced document cleaning pipeline on a single image.
+        Preserves authentic page geometry, aspect ratio, and layout naturally,
+        while eliminating shadows and faint bleed-through dots.
         """
         is_color = (len(img.shape) == 3 and img.shape[2] == 3)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if is_color else img.copy()
@@ -166,6 +212,11 @@ class DocumentCleaner:
 
         if self.mode == CleaningMode.LASER:
             result = self.apply_sauvola(norm)
+            
+            # Optical contrast-gated bleed-through dot removal
+            if self.filter_bleedthrough:
+                result = self.filter_bleedthrough_dots(result, gray, bg)
+                
             if self.despeckle:
                 result = self.remove_speckles(result)
             result = self.crop_margins(result)
@@ -181,6 +232,8 @@ class DocumentCleaner:
             result = cv2.adaptiveThreshold(
                 norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, win, 12
             )
+            if self.filter_bleedthrough:
+                result = self.filter_bleedthrough_dots(result, gray, bg)
             if self.despeckle:
                 result = self.remove_speckles(result)
             result = self.crop_margins(result)

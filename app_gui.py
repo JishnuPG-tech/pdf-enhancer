@@ -1,7 +1,7 @@
 """
-Interactive GUI for PDF Document Cleaner.
+Interactive GUI for PDF Document Cleaner & Bleed-Through Restorer.
 Provides live side-by-side Before/After preview, mode selection,
-Sauvola sensitivity tuning, levels controls, and high-DPI export.
+Sauvola sensitivity tuning, bleed-through dot removal, and high-DPI export.
 """
 
 import os
@@ -19,8 +19,8 @@ from pdf_cleaner import DocumentCleaner, CleaningMode, PDFProcessor
 class PDFCleanerGUI:
     def __init__(self, root: tk.Tk, initial_pdf: str = None):
         self.root = root
-        self.root.title("CleanPDF - Document Whitener & Cleaner")
-        self.root.geometry("1280x840")
+        self.root.title("CleanPDF - Document Whitener & Bleed-Through Restorer")
+        self.root.geometry("1300x860")
         self.root.minsize(1024, 700)
 
         self.pdf_path = initial_pdf or ""
@@ -37,7 +37,9 @@ class PDFCleanerGUI:
             despeckle=True,
             min_speckle_size=3,
             margin_percent=0.008,
-            contrast_boost=1.0
+            contrast_boost=1.0,
+            filter_bleedthrough=True,
+            contrast_threshold=38.0
         )
         self.processor = PDFProcessor(cleaner=self.cleaner, dpi=300)
 
@@ -77,7 +79,7 @@ class PDFCleanerGUI:
         body.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Left Sidebar
-        sidebar = ttk.Frame(body, width=320, padding="8")
+        sidebar = ttk.Frame(body, width=340, padding="8")
         sidebar.pack_propagate(False)
         body.add(sidebar, weight=0)
 
@@ -101,8 +103,34 @@ class PDFCleanerGUI:
                 command=self.on_mode_change
             ).pack(anchor=tk.W, pady=2)
 
-        # 2. Fine-Tuning Sliders Group
-        tuning_group = ttk.LabelFrame(sidebar, text=" 2. Fine-Tuning Controls ", padding="8")
+        # 2. Bleed-Through & Noise Group
+        noise_group = ttk.LabelFrame(sidebar, text=" 2. Bleed-Through & Dot Filters ", padding="8")
+        noise_group.pack(fill=tk.X, pady=(0, 8))
+
+        self.bleedthrough_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            noise_group,
+            text="✨ Remove Bleed-Through Ink Dots",
+            variable=self.bleedthrough_var,
+            command=self.on_checkbox_change
+        ).pack(anchor=tk.W, pady=2)
+
+        # Contrast Threshold Slider
+        self.lbl_contrast = ttk.Label(noise_group, text="Bleed-Through Filter Threshold: 38")
+        self.lbl_contrast.pack(anchor=tk.W, pady=(4, 0))
+        self.slider_contrast = ttk.Scale(noise_group, from_=20.0, to=65.0, value=38.0, command=self.on_slider_contrast)
+        self.slider_contrast.pack(fill=tk.X, pady=(0, 4))
+
+        self.despeckle_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            noise_group,
+            text="Despeckle (Salt & Pepper Noise)",
+            variable=self.despeckle_var,
+            command=self.on_checkbox_change
+        ).pack(anchor=tk.W, pady=2)
+
+        # 3. Fine-Tuning Sliders Group
+        tuning_group = ttk.LabelFrame(sidebar, text=" 3. Fine-Tuning Controls ", padding="8")
         tuning_group.pack(fill=tk.X, pady=(0, 8))
 
         # Sauvola K Slider
@@ -123,17 +151,8 @@ class PDFCleanerGUI:
         self.slider_black = ttk.Scale(tuning_group, from_=0, to=150, value=80, command=self.on_slider_black)
         self.slider_black.pack(fill=tk.X, pady=(0, 6))
 
-        # Options Checkboxes
-        self.despeckle_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            tuning_group,
-            text="Despeckle (Remove Salt & Pepper)",
-            variable=self.despeckle_var,
-            command=self.on_checkbox_change
-        ).pack(anchor=tk.W, pady=2)
-
-        # 3. Export Settings Group
-        export_group = ttk.LabelFrame(sidebar, text=" 3. Export PDF Settings ", padding="8")
+        # 4. Export Settings Group
+        export_group = ttk.LabelFrame(sidebar, text=" 4. Export PDF Settings ", padding="8")
         export_group.pack(fill=tk.X, pady=(0, 8))
 
         dpi_frame = ttk.Frame(export_group)
@@ -178,7 +197,7 @@ class PDFCleanerGUI:
         self.orig_canvas.pack(fill=tk.BOTH, expand=True)
 
         # Right: Cleaned
-        clean_box = ttk.LabelFrame(split_frame, text=" Cleaned & Whitened Output ", padding="4")
+        clean_box = ttk.LabelFrame(split_frame, text=" Cleaned Output (Pure White & Deep Black) ", padding="4")
         clean_box.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(3, 0))
         self.clean_canvas = tk.Canvas(clean_box, bg="#2a2a2a", highlightthickness=0)
         self.clean_canvas.pack(fill=tk.BOTH, expand=True)
@@ -261,6 +280,8 @@ class PDFCleanerGUI:
         self.cleaner.white_cutoff = int(self.slider_white.get())
         self.cleaner.black_cutoff = int(self.slider_black.get())
         self.cleaner.despeckle = self.despeckle_var.get()
+        self.cleaner.filter_bleedthrough = self.bleedthrough_var.get()
+        self.cleaner.contrast_threshold = float(self.slider_contrast.get())
 
         # Clean image
         self.cleaned_page_img = self.processor.clean_single_page(self.raw_page_img)
@@ -306,6 +327,10 @@ class PDFCleanerGUI:
 
     def on_slider_black(self, val):
         self.lbl_black.config(text=f"Black Cutoff: {int(float(val))}")
+        self.on_slider_change()
+
+    def on_slider_contrast(self, val):
+        self.lbl_contrast.config(text=f"Bleed-Through Filter Threshold: {float(val):.0f}")
         self.on_slider_change()
 
     def on_mode_change(self):

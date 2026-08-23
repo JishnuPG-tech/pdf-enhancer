@@ -2,9 +2,9 @@
 """
 Clean PDF CLI Tool
 Production Document Restoration Toolkit.
-Transforms scanned and photographed document PDFs with dark backgrounds and shadows
-into ultra-clean, pure-white (#FFFFFF) and deep-black (#000000) print-ready documents
-with authentic page layout, geometry, and crisp typography.
+Transforms scanned and photographed document PDFs with dark backgrounds, shadows,
+and back-page bleed-through dots into ultra-clean, pure-white (#FFFFFF) and deep-black (#000000)
+print-ready documents with authentic page layout, geometry, and crisp typography.
 """
 
 import os
@@ -57,7 +57,7 @@ def main():
 Examples:
   python clean_pdf.py "RATIO & Proportion.pdf"
   python clean_pdf.py document.pdf -o cleaned.pdf --mode laser --dpi 300
-  python clean_pdf.py book.pdf --mode smooth --white-cutoff 220
+  python clean_pdf.py book.pdf --contrast-thresh 35.0
   python clean_pdf.py book.pdf --pages 1-10
   python clean_pdf.py --gui
         """
@@ -78,6 +78,8 @@ Examples:
     parser.add_argument("--black-cutoff", type=int, default=80, help="Black level cutoff for smooth/color mode (default: 80, 0-255)")
     parser.add_argument("--no-despeckle", action="store_true", help="Disable salt-and-pepper noise filter")
     parser.add_argument("--min-speckle", type=int, default=3, help="Minimum connected component pixel size to keep (default: 3)")
+    parser.add_argument("--no-bleedthrough", action="store_true", help="Disable optical contrast bleed-through dot removal")
+    parser.add_argument("--contrast-thresh", type=float, default=38.0, help="Optical contrast threshold for bleed-through dot elimination (default: 38.0)")
     parser.add_argument("--margin", type=float, default=0.008, help="Outer margin shadow crop fraction (default: 0.008 = 0.8%%)")
     parser.add_argument("--contrast", type=float, default=1.0, help="Contrast boost power (default: 1.0)")
     parser.add_argument("-p", "--pages", help="Specific pages to process, e.g. '1-5', '1,3,7-10'")
@@ -109,12 +111,13 @@ Examples:
         args.output = f"{base}_cleaned.pdf"
 
     print("=" * 60)
-    print("  Document PDF Cleaner & Restorer")
+    print("  Document PDF Cleaner & Bleed-Through Restorer")
     print("=" * 60)
     print(f"Input PDF          : {args.input}")
     print(f"Output PDF         : {args.output}")
     print(f"Mode               : {args.mode.upper()}")
     print(f"DPI                : {args.dpi}")
+    print(f"Bleed-Through Dots : {'Disabled' if args.no_bleedthrough else f'Enabled (Contrast Threshold: {args.contrast_thresh})'}")
     print(f"Despeckle          : {'Disabled' if args.no_despeckle else f'Enabled (min size: {args.min_speckle})'}")
     print(f"Margin Crop        : {args.margin * 100:.1f}%")
     print("-" * 60)
@@ -128,7 +131,9 @@ Examples:
         despeckle=not args.no_despeckle,
         min_speckle_size=args.min_speckle,
         margin_percent=args.margin,
-        contrast_boost=args.contrast
+        contrast_boost=args.contrast,
+        filter_bleedthrough=not args.no_bleedthrough,
+        contrast_threshold=args.contrast_thresh
     )
 
     processor = PDFProcessor(cleaner=cleaner, dpi=args.dpi)
