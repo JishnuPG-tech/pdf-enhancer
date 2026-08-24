@@ -30,44 +30,64 @@ export const DocumentViewer: React.FC = () => {
   } = useAppStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const loupeRef = useRef<HTMLDivElement>(null);
+  const loupeImgRef = useRef<HTMLImageElement>(null);
+  const isDraggingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<any>(null);
+
   const [loupeVisible, setLoupeVisible] = useState(false);
 
-  // Fetch page preview from backend
-  const fetchPreview = useCallback(async () => {
+  // High-performance Preview Fetching with AbortController and Debouncing
+  const fetchPreview = useCallback(() => {
     if (!sessionId) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoadingPreview(true);
 
-    try {
-      const res = await fetch('/api/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: sessionId,
-          page: currentPage,
-          mode,
-          sauvola_k: sauvolaK,
-          white_cutoff: whiteCutoff,
-          black_cutoff: blackCutoff,
-          despeckle,
-          margin_percent: marginPercent,
-          contrast_thresh: contrastThresh,
-          adaptive: adaptiveProfiling,
-          word_envelope: wordEnvelope,
-          dpi
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setPreviewData(data.raw_image, data.clean_image, data.telemetry, data.latency_ms);
-      }
-    } catch (e) {
-      console.error('Preview error:', e);
-    } finally {
-      setIsLoadingPreview(false);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            session_id: sessionId,
+            page: currentPage,
+            mode,
+            sauvola_k: sauvolaK,
+            white_cutoff: whiteCutoff,
+            black_cutoff: blackCutoff,
+            despeckle,
+            margin_percent: marginPercent,
+            contrast_thresh: contrastThresh,
+            adaptive: adaptiveProfiling,
+            word_envelope: wordEnvelope,
+            dpi
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setPreviewData(data.raw_image, data.clean_image, data.telemetry, data.latency_ms);
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          console.error('Preview error:', e);
+        }
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    }, 60); // 60ms fast debounce
   }, [
     sessionId,
     currentPage,
@@ -87,6 +107,10 @@ export const DocumentViewer: React.FC = () => {
 
   useEffect(() => {
     fetchPreview();
+    return () => {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
   }, [fetchPreview]);
 
   // Keyboard navigation
@@ -108,18 +132,24 @@ export const DocumentViewer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages, setCurrentPage, sliderPosition, setSliderPosition]);
 
-  // Slider Dragging Logic
+  // Direct DOM Updates on MouseMove for 120 FPS cursor tracking with ZERO React re-renders!
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
     const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
 
-    setMousePos({ x, y });
-
-    if (isDragging) {
+    if (isDraggingRef.current) {
       const pos = Math.round((x / rect.width) * 100);
       setSliderPosition(Math.max(0, Math.min(100, pos)));
+    }
+
+    // Direct hardware-accelerated loupe positioning
+    if (isLoupeActive && loupeRef.current) {
+      loupeRef.current.style.transform = `translate3d(${x - 90}px, ${y - 90}px, 0)`;
+      if (loupeImgRef.current) {
+        loupeImgRef.current.style.transformOrigin = `${x}px ${y}px`;
+      }
     }
   };
 
@@ -136,7 +166,7 @@ export const DocumentViewer: React.FC = () => {
     <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden"
       style={{ backgroundColor: 'var(--bg-base)' }}>
       {/* Top Canvas Toolbar */}
-      <div className="h-12 px-6 border-b flex items-center justify-between z-10"
+      <div className="h-12 px-6 border-b flex items-center justify-between z-10 select-none"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border)'
@@ -146,7 +176,7 @@ export const DocumentViewer: React.FC = () => {
           <button
             onClick={() => currentPage > 0 && setCurrentPage(currentPage - 1)}
             disabled={currentPage === 0}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-all cursor-pointer"
+            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-colors cursor-pointer active:scale-95"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
             title="Previous Page (←)">
             <ChevronLeft className="w-4 h-4" />
@@ -157,7 +187,7 @@ export const DocumentViewer: React.FC = () => {
           <button
             onClick={() => currentPage < totalPages - 1 && setCurrentPage(currentPage + 1)}
             disabled={currentPage >= totalPages - 1}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-all cursor-pointer"
+            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-colors cursor-pointer active:scale-95"
             style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
             title="Next Page (→)">
             <ChevronRight className="w-4 h-4" />
@@ -166,7 +196,6 @@ export const DocumentViewer: React.FC = () => {
 
         {/* View Mode Controls */}
         <div className="flex items-center gap-2">
-          {/* Split indicator */}
           <span className="text-xs font-mono-hud text-[var(--text-secondary)] mr-2">
             Split: {sliderPosition}%
           </span>
@@ -174,7 +203,7 @@ export const DocumentViewer: React.FC = () => {
           {/* Optical Loupe Toggle */}
           <button
             onClick={() => setIsLoupeActive(!isLoupeActive)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer active:scale-95 ${
               isLoupeActive
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
                 : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)] border-[var(--border)]'
@@ -187,7 +216,7 @@ export const DocumentViewer: React.FC = () => {
           {/* Reset Split to 50% */}
           <button
             onClick={() => setSliderPosition(50)}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] transition-all cursor-pointer"
+            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer active:scale-95"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             title="Reset Split to Center">
             <RotateCcw className="w-3.5 h-3.5" />
@@ -199,17 +228,17 @@ export const DocumentViewer: React.FC = () => {
       <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
-        onMouseDown={() => setIsDragging(true)}
-        onMouseUp={() => setIsDragging(false)}
+        onMouseDown={() => { isDraggingRef.current = true; }}
+        onMouseUp={() => { isDraggingRef.current = false; }}
         onMouseEnter={() => setLoupeVisible(true)}
         onMouseLeave={() => {
-          setIsDragging(false);
+          isDraggingRef.current = false;
           setLoupeVisible(false);
         }}
         onTouchMove={handleTouchMove}
         className="flex-1 flex items-center justify-center p-6 relative overflow-hidden select-none cursor-ew-resize">
         
-        {isLoadingPreview && (
+        {isLoadingPreview && !previewClean && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-30 flex items-center justify-center">
             <div className="px-5 py-3 rounded-2xl border flex items-center gap-3 shadow-2xl"
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--accent)' }}>
@@ -269,25 +298,27 @@ export const DocumentViewer: React.FC = () => {
               Restored (#FFFFFF)
             </div>
 
-            {/* 2.5x Optical Magnifier Loupe */}
-            {isLoupeActive && loupeVisible && (
+            {/* 2.5x Optical Magnifier Loupe (Direct Hardware Transform) */}
+            {isLoupeActive && (
               <div
-                className="absolute pointer-events-none z-30 rounded-full border-2 shadow-2xl overflow-hidden"
+                ref={loupeRef}
+                className={`absolute top-0 left-0 pointer-events-none z-30 rounded-full border-2 shadow-2xl overflow-hidden transition-opacity duration-150 ${
+                  loupeVisible ? 'opacity-100' : 'opacity-0'
+                }`}
                 style={{
                   width: '180px',
                   height: '180px',
-                  left: `${mousePos.x - 90}px`,
-                  top: `${mousePos.y - 90}px`,
                   borderColor: 'var(--accent)',
-                  boxShadow: '0 0 25px var(--accent-glow), 0 10px 30px rgba(0,0,0,0.6)'
+                  boxShadow: '0 0 25px var(--accent-glow), 0 10px 30px rgba(0,0,0,0.6)',
+                  willChange: 'transform'
                 }}>
-                <div
-                  className="w-full h-full relative"
-                  style={{
-                    transform: 'scale(2.5)',
-                    transformOrigin: `${mousePos.x}px ${mousePos.y}px`
-                  }}>
-                  <img src={previewClean} alt="Loupe Clean" className="absolute inset-0 w-full h-full object-contain" />
+                <div className="w-full h-full relative" style={{ transform: 'scale(2.5)' }}>
+                  <img
+                    ref={loupeImgRef}
+                    src={previewClean}
+                    alt="Loupe Clean"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
                 </div>
               </div>
             )}
