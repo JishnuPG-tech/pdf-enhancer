@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { CheckCircle2, Download, XCircle, Clock, FileCheck } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { CheckCircle2, Download, XCircle, Clock, FileCheck, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAppStore } from '../store/useAppStore';
 
@@ -16,34 +16,69 @@ export const BatchProgressBar: React.FC = () => {
     cancelBatch
   } = useAppStore();
 
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   useEffect(() => {
     if (!isProcessing || !taskId) return;
 
-    const interval = setInterval(async () => {
+    // 1. Connect to Real-Time Server-Sent Events (SSE) Stream
+    const streamUrl = `api/stream/${taskId}`;
+    const es = new EventSource(streamUrl);
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
       try {
-        const res = await fetch(`api/progress/${taskId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'completed') {
-            completeBatch();
-            confetti({
-              particleCount: 80,
-              spread: 70,
-              origin: { y: 0.9 },
-              colors: ['#d97757', '#10b981', '#ffffff']
-            });
-          } else if (data.status === 'failed') {
-            cancelBatch();
-          } else {
-            updateProgress(data.percent || 0, data.message || 'Processing...', data.eta_seconds || 0);
-          }
+        const data = JSON.parse(event.data);
+        if (data.status === 'completed') {
+          completeBatch();
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.9 },
+            colors: ['#d97757', '#10b981', '#ffffff']
+          });
+          es.close();
+        } else if (data.status === 'failed') {
+          cancelBatch();
+          es.close();
+        } else {
+          updateProgress(data.percent || 0, data.message || 'Processing pages...', data.eta_seconds || 0);
         }
       } catch (e) {
-        console.error('Progress poll error:', e);
+        console.error('SSE JSON parse error:', e);
       }
-    }, 600);
+    };
 
-    return () => clearInterval(interval);
+    es.onerror = () => {
+      // Fallback polling if SSE disconnects
+      const fallbackPoll = setInterval(async () => {
+        try {
+          const res = await fetch(`api/progress/${taskId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'completed') {
+              completeBatch();
+              clearInterval(fallbackPoll);
+            } else if (data.status === 'failed') {
+              cancelBatch();
+              clearInterval(fallbackPoll);
+            } else {
+              updateProgress(data.percent || 0, data.message || 'Processing...', data.eta_seconds || 0);
+            }
+          }
+        } catch {}
+      }, 500);
+
+      es.close();
+      return () => clearInterval(fallbackPoll);
+    };
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
   }, [isProcessing, taskId, updateProgress, completeBatch, cancelBatch]);
 
   if (!isProcessing && !isComplete) return null;
@@ -67,9 +102,11 @@ export const BatchProgressBar: React.FC = () => {
             )}
             <span>{isComplete ? 'Restoration Finished Successfully!' : progressMessage}</span>
           </div>
-          <span className="font-mono-hud font-bold text-[var(--accent)]">
-            {progressPercent}%
-          </span>
+          
+          <div className="flex items-center gap-1.5 font-mono-hud font-bold text-[var(--accent)]">
+            {!isComplete && <Zap className="w-3 h-3 text-[var(--accent)] animate-bounce" />}
+            <span>{progressPercent}%</span>
+          </div>
         </div>
 
         {/* Progress Bar Track */}
@@ -86,14 +123,16 @@ export const BatchProgressBar: React.FC = () => {
           </div>
         </div>
 
-        {/* ETA & Metrics */}
+        {/* ETA & Multi-Core Metrics */}
         {!isComplete && (
           <div className="flex items-center justify-between text-[11px] font-mono-hud text-[var(--text-secondary)]">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-[var(--accent)]" />
-              <span>Estimated Time Remaining: {etaSeconds}s</span>
+              <span>Estimated Remaining: {etaSeconds}s</span>
             </div>
-            <span>Print-ready output compiling...</span>
+            <span className="text-[10px] text-[var(--accent)] font-semibold">
+              ⚡ Multi-Core Accelerated SSE Stream
+            </span>
           </div>
         )}
       </div>
@@ -105,7 +144,7 @@ export const BatchProgressBar: React.FC = () => {
             href={`api/download/${taskId}`}
             target="_blank"
             rel="noreferrer"
-            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-all duration-150 hover:scale-105 active:scale-95"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer"
             style={{ backgroundColor: 'var(--accent)' }}>
             <Download className="w-4 h-4" />
             <span>Download Clean PDF</span>
@@ -113,7 +152,7 @@ export const BatchProgressBar: React.FC = () => {
         ) : (
           <button
             onClick={cancelBatch}
-            className="p-2 rounded-xl border hover:bg-red-500/10 text-red-400 border-red-500/30 transition-colors"
+            className="p-2 rounded-xl border hover:bg-red-500/10 text-red-400 border-red-500/30 transition-colors cursor-pointer"
             title="Cancel Batch Processing">
             <XCircle className="w-4 h-4" />
           </button>
