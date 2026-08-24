@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileUp, Cpu, ScanText, Printer, AlertCircle, Sparkles, FileText } from 'lucide-react';
+import { FileUp, Cpu, ScanText, Printer, AlertCircle, Sparkles, FileText, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 const LOADING_STEPS = [
@@ -88,23 +88,40 @@ export const Dropzone: React.FC = () => {
   const currentStep = LOADING_STEPS[currentStepIdx];
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 relative select-none w-full h-full">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 relative select-none w-full h-full blueprint-grid">
+      {/* Background Ambient Radial Glow */}
+      <div
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] rounded-full pointer-events-none opacity-40 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)'
+        }}
+      />
+
       {!isUploading ? (
         <>
-          {/* Main Dropzone Card */}
+          {/* Futuristic Target Glass Dropzone */}
           <div
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`w-full max-w-xl p-10 rounded-3xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative overflow-hidden backdrop-blur-xl ${
-              isDragging ? 'scale-[1.02] shadow-2xl' : 'hover:border-[var(--accent)]'
+            className={`w-full max-w-xl p-12 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl ${
+              isDragging
+                ? 'scale-[1.02] border-[var(--accent)] shadow-2xl'
+                : 'hover:border-[var(--border-hover)] shadow-xl'
             }`}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: isDragging ? 'var(--accent)' : 'var(--border)',
-              boxShadow: isDragging ? '0 0 40px var(--accent-glow)' : '0 10px 30px rgba(0,0,0,0.3)'
+              boxShadow: isDragging ? '0 0 50px var(--accent-glow)' : '0 20px 40px rgba(0,0,0,0.4)'
             }}>
+            
+            {/* Precision Blueprint Corner Crosshairs */}
+            <div className="absolute top-3 left-3 text-xs font-mono-hud text-[var(--accent)] opacity-60 pointer-events-none">+</div>
+            <div className="absolute top-3 right-3 text-xs font-mono-hud text-[var(--accent)] opacity-60 pointer-events-none">+</div>
+            <div className="absolute bottom-3 left-3 text-xs font-mono-hud text-[var(--accent)] opacity-60 pointer-events-none">+</div>
+            <div className="absolute bottom-3 right-3 text-xs font-mono-hud text-[var(--accent)] opacity-60 pointer-events-none">+</div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -113,33 +130,44 @@ export const Dropzone: React.FC = () => {
               onChange={(e) => handleFiles(e.target.files)}
             />
 
-            {/* Upload Icon */}
+            {/* Glowing Accent Upload Icon */}
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-200"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110 border"
               style={{
                 backgroundColor: 'var(--accent-muted)',
-                color: 'var(--accent)'
+                borderColor: 'var(--accent-glow)',
+                color: 'var(--accent)',
+                boxShadow: '0 0 20px var(--accent-glow)'
               }}>
-              <FileUp className="w-7 h-7" />
+              <FileUp className="w-8 h-8" />
             </div>
 
-            <h2 className="text-xl font-bold mb-1.5 tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Drop your document PDF
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono-hud font-semibold text-[var(--accent)] bg-[var(--accent-muted)] border border-[var(--accent-glow)] mb-3">
+              <Sparkles className="w-3 h-3" />
+              <span>AI BLEED-THROUGH RESTORATION</span>
+            </div>
+
+            <h2 className="text-2xl font-extrabold mb-2 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Drop your document PDF here
             </h2>
-            <p className="text-xs max-w-sm mb-5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Erases reverse-side bleed-through dots, shadows, and darkness into pure #FFFFFF laser quality.
+            <p className="text-sm max-w-sm mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Turns shadowed, stained, or camera-shot book pages into pure #FFFFFF laser print quality.
             </p>
 
             <button
               type="button"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-lg transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-95"
-              style={{ backgroundColor: 'var(--accent)' }}>
-              Browse PDF File
+              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg transition-all duration-150 cursor-pointer flex items-center gap-2 hover:opacity-90 active:scale-95 border border-white/20"
+              style={{
+                backgroundColor: 'var(--accent)',
+                boxShadow: '0 0 20px var(--accent-glow)'
+              }}>
+              <span>Browse Local File</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             {errorMsg && (
               <div
-                className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 text-xs border"
+                className="mt-5 px-4 py-2 rounded-lg flex items-center gap-2 text-xs border"
                 style={{
                   backgroundColor: 'rgba(239, 68, 68, 0.1)',
                   borderColor: 'var(--danger)',
@@ -152,49 +180,49 @@ export const Dropzone: React.FC = () => {
           </div>
 
           {/* Feature Badges */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 max-w-xl w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-6 max-w-xl w-full">
             <div
-              className="p-3 rounded-xl border flex items-center gap-2.5"
+              className="p-3.5 rounded-2xl border flex items-center gap-3 backdrop-blur-xl transition-colors hover:border-[var(--border-hover)]"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border)'
               }}>
-              <div className="p-1.5 rounded-lg" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <Cpu className="w-3.5 h-3.5" />
+              <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                <Cpu className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>AI Auto-Tuner</div>
-                <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>Dynamic contrast metering</div>
+                <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>AI Auto-Tuner</div>
+                <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Dynamic contrast metering</div>
               </div>
             </div>
 
             <div
-              className="p-3 rounded-xl border flex items-center gap-2.5"
+              className="p-3.5 rounded-2xl border flex items-center gap-3 backdrop-blur-xl transition-colors hover:border-[var(--border-hover)]"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border)'
               }}>
-              <div className="p-1.5 rounded-lg" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <ScanText className="w-3.5 h-3.5" />
+              <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                <ScanText className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Word Envelopes</div>
-                <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>100% character protection</div>
+                <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Word Envelopes</div>
+                <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>100% character protection</div>
               </div>
             </div>
 
             <div
-              className="p-3 rounded-xl border flex items-center gap-2.5"
+              className="p-3.5 rounded-2xl border flex items-center gap-3 backdrop-blur-xl transition-colors hover:border-[var(--border-hover)]"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border)'
               }}>
-              <div className="p-1.5 rounded-lg" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <Printer className="w-3.5 h-3.5" />
+              <div className="p-2 rounded-xl" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                <Printer className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Laser Print Ready</div>
-                <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>Pure #FFFFFF background</div>
+                <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Laser Print Ready</div>
+                <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Pure #FFFFFF background</div>
               </div>
             </div>
           </div>
@@ -214,7 +242,7 @@ export const Dropzone: React.FC = () => {
               className="absolute inset-1 rounded-full border-2 border-transparent border-t-[var(--accent)] border-r-[var(--accent)] animate-spin"
               style={{
                 animationDuration: '1.2s',
-                boxShadow: '0 0 20px var(--accent-glow)'
+                boxShadow: '0 0 25px var(--accent-glow)'
               }}
             />
 
@@ -239,7 +267,7 @@ export const Dropzone: React.FC = () => {
           {/* Heading & File Name */}
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-4 h-4 text-[var(--accent)] animate-spin" />
-            <h3 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <h3 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Restoring Document Matrix
             </h3>
           </div>
@@ -269,7 +297,7 @@ export const Dropzone: React.FC = () => {
               style={{
                 width: `${((currentStepIdx + 1) / LOADING_STEPS.length) * 100}%`,
                 backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 12px var(--accent-glow)'
+                boxShadow: '0 0 14px var(--accent-glow)'
               }}
             />
           </div>
