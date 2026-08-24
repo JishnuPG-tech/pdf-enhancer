@@ -49,7 +49,7 @@ export const Dropzone: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch('api/upload', {
         method: 'POST',
         body: formData
       });
@@ -254,14 +254,6 @@ export const Dropzone: React.FC = () => {
               }}>
               <FileText className="w-8 h-8 text-[var(--accent)] animate-pulse" />
             </div>
-
-            <div
-              className="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
-              style={{
-                backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 10px var(--accent), 0 0 20px var(--accent-glow)'
-              }}
-            />
           </div>
 
           {/* Heading & File Name */}

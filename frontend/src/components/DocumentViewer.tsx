@@ -68,7 +68,7 @@ export const DocumentViewer: React.FC = () => {
     setIsLoadingPreview(true);
 
     try {
-      const res = await fetch('/api/preview', {
+      const res = await fetch('api/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,

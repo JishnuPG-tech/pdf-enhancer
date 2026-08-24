@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
     const checkHealth = async () => {
       try {
         const t0 = performance.now();
-        const res = await fetch('/api/health');
+        const res = await fetch('api/health');
         const t1 = performance.now();
         if (res.ok) {
           const l = Math.round(t1 - t0);
@@ -44,7 +44,7 @@ export const Header: React.FC = () => {
 
   const handleDownload = () => {
     if (taskId && isComplete) {
-      window.open(`/api/download/${taskId}`, '_blank');
+      window.open(`api/download/${taskId}`, '_blank');
     }
   };
 

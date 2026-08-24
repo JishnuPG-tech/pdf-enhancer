@@ -21,7 +21,7 @@ export const BatchProgressBar: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/progress/${taskId}`);
+        const res = await fetch(`api/progress/${taskId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.status === 'completed') {
@@ -102,7 +102,7 @@ export const BatchProgressBar: React.FC = () => {
       <div className="flex items-center gap-2">
         {isComplete && taskId ? (
           <a
-            href={`/api/download/${taskId}`}
+            href={`api/download/${taskId}`}
             target="_blank"
             rel="noreferrer"
             className="px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-all duration-150 hover:scale-105 active:scale-95"
