@@ -1,38 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { FileUp, Cpu, ScanText, Printer, AlertCircle, Sparkles, FileText, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-
-const LOADING_STEPS = [
-  { step: '01', title: 'Decompressing vector page matrices...', subtitle: 'Analyzing high-resolution page geometry' },
-  { step: '02', title: 'Profiling optical noise energy (E_noise)...', subtitle: 'Isolating reverse bleed-through artifacts' },
-  { step: '03', title: 'Synthesizing word protection envelopes...', subtitle: 'Preserving 100% of text & math characters' },
-  { step: '04', title: 'Calibrating 120 FPS interactive viewport...', subtitle: 'Preparing pure-white (#FFFFFF) output' }
-];
 
 export const Dropzone: React.FC = () => {
   const { setDocument } = useAppStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [currentStepIdx, setCurrentStepIdx] = useState(0);
+  const [uploadPercent, setUploadPercent] = useState(0);
+  const [uploadBytes, setUploadBytes] = useState<{ loaded: string; total: string }>({ loaded: '0.0', total: '0.0' });
   const [uploadFileName, setUploadFileName] = useState<string>('');
+  const [statusText, setStatusText] = useState<string>('Streaming document bytes...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Smooth step advancement
-  useEffect(() => {
-    if (!isUploading) {
-      setCurrentStepIdx(0);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setCurrentStepIdx((prev) => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev));
-    }, 600);
-
-    return () => clearInterval(interval);
-  }, [isUploading]);
-
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
 
@@ -44,30 +25,63 @@ export const Dropzone: React.FC = () => {
     setErrorMsg(null);
     setUploadFileName(file.name);
     setIsUploading(true);
+    setUploadPercent(0);
+    setStatusText('Streaming document bytes to cloud...');
 
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const response = await fetch('api/upload', {
-        method: 'POST',
-        body: formData
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/upload', true);
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Upload failed');
+    // 1. Real-Time Byte-by-Byte Upload Progress (0% to 100%)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        const loadedMB = (e.loaded / (1024 * 1024)).toFixed(2);
+        const totalMB = (e.total / (1024 * 1024)).toFixed(2);
+        
+        setUploadPercent(percent);
+        setUploadBytes({ loaded: loadedMB, total: totalMB });
+
+        if (percent < 100) {
+          setStatusText(`Uploading payload (${loadedMB} MB / ${totalMB} MB)...`);
+        } else {
+          setStatusText('Parsing vector page matrices & calibrating viewport...');
+        }
       }
+    };
 
-      const data = await response.json();
-      
-      setTimeout(() => {
-        setDocument(data.session_id, data.filename, data.total_pages, data.thumbnails);
-      }, 400);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error uploading document.');
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          setUploadPercent(100);
+          setStatusText('Calibrating 120 FPS canvas...');
+          setTimeout(() => {
+            setDocument(data.session_id, data.filename, data.total_pages, data.thumbnails);
+          }, 200);
+        } catch (err: any) {
+          setErrorMsg('Failed to parse server response.');
+          setIsUploading(false);
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          setErrorMsg(err.detail || 'Upload failed');
+        } catch {
+          setErrorMsg(`Upload failed with status code ${xhr.status}`);
+        }
+        setIsUploading(false);
+      }
+    };
+
+    xhr.onerror = () => {
+      setErrorMsg('Network error during file upload.');
       setIsUploading(false);
-    }
+    };
+
+    xhr.send(formData);
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -84,8 +98,6 @@ export const Dropzone: React.FC = () => {
     setIsDragging(false);
     handleFiles(e.dataTransfer.files);
   };
-
-  const currentStep = LOADING_STEPS[currentStepIdx];
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 relative select-none w-full h-full blueprint-grid">
@@ -228,7 +240,7 @@ export const Dropzone: React.FC = () => {
           </div>
         </>
       ) : (
-        /* Minimalist, Clean, Uncompressed Orbital Scanner Loading */
+        /* Real-Time Byte-by-Byte Orbital Scanner Loading (0% - 100%) */
         <div className="flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300 max-w-md w-full">
           
           {/* Orbital Radar Sweep Ring */}
@@ -257,10 +269,10 @@ export const Dropzone: React.FC = () => {
           </div>
 
           {/* Heading & File Name */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <Sparkles className="w-4 h-4 text-[var(--accent)] animate-spin" />
             <h3 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Restoring Document Matrix
+              Ingesting Document Matrix
             </h3>
           </div>
 
@@ -269,27 +281,29 @@ export const Dropzone: React.FC = () => {
             {uploadFileName || 'document.pdf'}
           </p>
 
-          {/* Single Dynamic Live Status Line */}
-          <div className="h-14 flex flex-col items-center justify-center mb-6">
-            <div className="text-sm font-semibold text-[var(--accent)] flex items-center gap-2 transition-all duration-300">
-              <span className="font-mono-hud text-[11px] px-1.5 py-0.5 rounded bg-black/30 text-white/80">
-                {currentStep.step}
-              </span>
-              <span>{currentStep.title}</span>
+          {/* Real-time Status Text & Live Percentage */}
+          <div className="h-14 flex flex-col items-center justify-center mb-4">
+            <div className="text-base font-bold text-[var(--accent)] font-mono-hud flex items-center gap-2">
+              <span>{uploadPercent}%</span>
+              {uploadBytes.total !== '0.0' && (
+                <span className="text-xs text-[var(--text-secondary)] font-normal">
+                  ({uploadBytes.loaded} / {uploadBytes.total} MB)
+                </span>
+              )}
             </div>
-            <div className="text-[11px] text-[var(--text-secondary)] mt-1 transition-opacity duration-300">
-              {currentStep.subtitle}
+            <div className="text-xs text-[var(--text-secondary)] mt-1 max-w-xs truncate">
+              {statusText}
             </div>
           </div>
 
-          {/* Sleek Minimalist Laser Progress Bar */}
-          <div className="w-64 bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/10 relative">
+          {/* Real-Time Live Progress Bar (0% to 100%) */}
+          <div className="w-72 bg-black/40 h-2 rounded-full overflow-hidden border border-white/10 relative">
             <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
+              className="h-full rounded-full transition-all duration-150 ease-out"
               style={{
-                width: `${((currentStepIdx + 1) / LOADING_STEPS.length) * 100}%`,
+                width: `${uploadPercent}%`,
                 backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 14px var(--accent-glow)'
+                boxShadow: '0 0 16px var(--accent-glow)'
               }}
             />
           </div>
