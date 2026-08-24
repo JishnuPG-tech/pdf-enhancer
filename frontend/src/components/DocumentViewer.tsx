@@ -170,10 +170,8 @@ export const DocumentViewer: React.FC = () => {
       const loupeRadius = 90; // 180px diameter / 2
       const scale = 2.5;
 
-      // Position loupe centered at cursor
       loupeRef.current.style.transform = `translate3d(${x - loupeRadius}px, ${y - loupeRadius}px, 0)`;
 
-      // Set dynamic background coordinates matching exact cursor position on the document
       const bgW = rect.width * scale;
       const bgH = rect.height * scale;
       const bgX = -(x * scale - loupeRadius);
@@ -192,18 +190,18 @@ export const DocumentViewer: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] overflow-hidden relative select-none"
+    <div className="flex-1 flex flex-col h-full w-full overflow-hidden relative select-none"
       style={{ backgroundColor: 'var(--bg-base)' }}>
       
       {/* Main Full-Bleed Document Canvas */}
       <div
         ref={containerRef}
         onPointerMove={handlePointerMove}
-        className="flex-1 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+        className="flex-1 flex items-center justify-center px-4 pt-2 pb-16 relative overflow-hidden">
         
         {/* Loading Spinner Ribbon */}
         {isLoadingPreview && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 px-4 py-1.5 rounded-full border shadow-xl flex items-center gap-2 backdrop-blur-xl animate-in fade-in"
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1 rounded-full border shadow-xl flex items-center gap-2 backdrop-blur-xl animate-in fade-in"
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--accent)' }}>
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
             <span className="text-[11px] font-semibold text-[var(--text-primary)]">
@@ -223,7 +221,7 @@ export const DocumentViewer: React.FC = () => {
               isDraggingRef.current = false;
               setLoupeVisible(false);
             }}
-            className={`relative max-h-full max-w-full aspect-auto rounded-xl shadow-2xl overflow-hidden border touch-none ${
+            className={`relative max-h-[calc(100vh-8.5rem)] max-w-[calc(100vw-3rem)] rounded-xl shadow-2xl overflow-hidden border touch-none flex items-center justify-center ${
               isLoupeActive ? 'cursor-crosshair' : 'cursor-ew-resize'
             }`}
             style={{ borderColor: 'var(--border)' }}>
@@ -232,24 +230,24 @@ export const DocumentViewer: React.FC = () => {
             <img
               src={previewClean}
               alt="Cleaned Document"
-              className="max-h-[calc(100vh-7rem)] w-auto object-contain block pointer-events-none"
+              className="max-h-[calc(100vh-8.5rem)] max-w-[calc(100vw-3rem)] w-auto h-auto object-contain block pointer-events-none"
               draggable={false}
             />
 
             {/* Original Scanned Document (Top Clipped Layer) */}
             <div
               ref={clipLayerRef}
-              className="absolute inset-0 overflow-hidden pointer-events-none"
+              className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center"
               style={{ clipPath: `inset(0 ${100 - splitPosRef.current}% 0 0)` }}>
               <img
                 src={previewRaw}
                 alt="Original Scanned Document"
-                className="max-h-[calc(100vh-7rem)] w-auto object-contain block"
+                className="max-h-[calc(100vh-8.5rem)] max-w-[calc(100vw-3rem)] w-auto h-auto object-contain block"
                 draggable={false}
               />
             </div>
 
-            {/* Split Slider Divider (Hidden if Loupe Active for unobstructed viewing) */}
+            {/* Split Slider Divider */}
             {!isLoupeActive && (
               <div
                 ref={dividerRef}
@@ -261,21 +259,21 @@ export const DocumentViewer: React.FC = () => {
                   willChange: 'left'
                 }}>
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-2xl cursor-grab active:cursor-grabbing border-2 border-white pointer-events-auto"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center text-white shadow-2xl cursor-grab active:cursor-grabbing border-2 border-white pointer-events-auto"
                   style={{
                     backgroundColor: 'var(--accent)',
-                    boxShadow: '0 0 18px var(--accent-glow)'
+                    boxShadow: '0 0 16px var(--accent-glow)'
                   }}>
-                  <Split className="w-3.5 h-3.5" />
+                  <Split className="w-3 h-3" />
                 </div>
               </div>
             )}
 
             {/* Top Corner Badges */}
-            <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-black/70 text-white/90 backdrop-blur-md border border-white/10 pointer-events-none">
+            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-black/70 text-white/90 backdrop-blur-md border border-white/10 pointer-events-none">
               Original Scan
             </div>
-            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-[var(--accent)] text-white backdrop-blur-md shadow-sm pointer-events-none">
+            <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-[var(--accent)] text-white backdrop-blur-md shadow-sm pointer-events-none">
               Lucent (#FFFFFF)
             </div>
 
@@ -307,11 +305,11 @@ export const DocumentViewer: React.FC = () => {
       </div>
 
       {/* Floating Bottom Control Pill */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1.5 rounded-full border shadow-2xl backdrop-blur-2xl transition-all duration-200 select-none"
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1 rounded-full border shadow-2xl backdrop-blur-2xl transition-all duration-200 select-none"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
         {/* Page Nav */}
         <div className="flex items-center gap-1 px-1">
@@ -326,7 +324,7 @@ export const DocumentViewer: React.FC = () => {
           
           <button
             onClick={toggleFilmstrip}
-            className="px-2.5 py-1 rounded-full text-xs font-mono-hud font-bold hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer flex items-center gap-1"
+            className="px-2.5 py-0.5 rounded-full text-xs font-mono-hud font-bold hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer flex items-center gap-1"
             style={{ color: 'var(--text-primary)' }}
             title="Open Page Filmstrip (T)">
             <span>{currentPage + 1}</span>

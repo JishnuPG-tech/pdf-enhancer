@@ -36,16 +36,18 @@
   --danger: #ef4444;
 }
 
-body {
+html, body, #root {
+  height: 100%;
+  max-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
   background-color: var(--bg-base);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter Tight', 'Geist Sans', 'Segoe UI', Roboto, sans-serif;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  transition: background-color 150ms ease, color 150ms ease;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 /* Custom scrollbars */

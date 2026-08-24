@@ -14,7 +14,7 @@ export const App: React.FC = () => {
   }, [theme]);
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-150 overflow-hidden"
+    <div className="h-screen max-h-screen w-screen flex flex-col transition-colors duration-150 overflow-hidden select-none"
       style={{ backgroundColor: 'var(--bg-base)' }}>
       {/* 48px Minimalist Top Bar */}
       <Header />
