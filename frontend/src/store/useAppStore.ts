@@ -36,7 +36,7 @@ interface AppState {
   setPreviewData: (raw: string, clean: string, telemetry: TelemetryData, latency: number) => void;
   setIsLoadingPreview: (loading: boolean) => void;
 
-  // Parameters
+  // Tuning Parameters
   mode: CleaningMode;
   sauvolaK: number;
   whiteCutoff: number;
@@ -72,29 +72,35 @@ interface AppState {
   completeBatch: () => void;
   cancelBatch: () => void;
 
-  // UI Interactive States
+  // UI Interactive States & Overlays (Focus-First)
   sliderPosition: number;
   setSliderPosition: (pos: number) => void;
   isLoupeActive: boolean;
   setIsLoupeActive: (active: boolean) => void;
+  isAdjustOpen: boolean;
+  setIsAdjustOpen: (open: boolean) => void;
+  toggleAdjust: () => void;
+  isFilmstripOpen: boolean;
+  setIsFilmstripOpen: (open: boolean) => void;
+  toggleFilmstrip: () => void;
+  isTelemetryOpen: boolean;
+  setIsTelemetryOpen: (open: boolean) => void;
+  toggleTelemetry: () => void;
   isCommandPaletteOpen: boolean;
   setIsCommandPaletteOpen: (open: boolean) => void;
-  isLeftRailExpanded: boolean;
-  setIsLeftRailExpanded: (expanded: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  // Theme default: dark
-  theme: (localStorage.getItem('pdf_enhancer_theme') as Theme) || 'dark',
+  theme: (localStorage.getItem('lucent_theme') as Theme) || 'dark',
   setTheme: (theme) => {
-    localStorage.setItem('pdf_enhancer_theme', theme);
+    localStorage.setItem('lucent_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     set({ theme });
   },
   toggleTheme: () =>
     set((state) => {
       const next = state.theme === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('pdf_enhancer_theme', next);
+      localStorage.setItem('lucent_theme', next);
       document.documentElement.setAttribute('data-theme', next);
       return { theme: next };
     }),
@@ -120,7 +126,9 @@ export const useAppStore = create<AppState>((set) => ({
       telemetry: null,
       isComplete: false,
       isProcessing: false,
-      taskId: null
+      taskId: null,
+      isAdjustOpen: false,
+      isFilmstripOpen: false
     }),
 
   // Preview & Telemetry
@@ -164,18 +172,25 @@ export const useAppStore = create<AppState>((set) => ({
   progressMessage: '',
   etaSeconds: 0,
   isComplete: false,
-  startBatch: (taskId) => set({ isProcessing: true, taskId, progressPercent: 0, progressMessage: 'Starting restoration...', isComplete: false }),
+  startBatch: (taskId) => set({ isProcessing: true, taskId, progressPercent: 0, progressMessage: 'Restoring document...', isComplete: false }),
   updateProgress: (progressPercent, progressMessage, etaSeconds) => set({ progressPercent, progressMessage, etaSeconds }),
   completeBatch: () => set({ isProcessing: false, isComplete: true, progressPercent: 100, progressMessage: 'Complete' }),
   cancelBatch: () => set({ isProcessing: false, taskId: null, progressPercent: 0, progressMessage: '' }),
 
-  // Interactive Viewport
+  // Interactive Viewport & Floating Overlays
   sliderPosition: 50,
   setSliderPosition: (sliderPosition) => set({ sliderPosition }),
   isLoupeActive: false,
   setIsLoupeActive: (isLoupeActive) => set({ isLoupeActive }),
+  isAdjustOpen: false,
+  setIsAdjustOpen: (isAdjustOpen) => set({ isAdjustOpen }),
+  toggleAdjust: () => set((state) => ({ isAdjustOpen: !state.isAdjustOpen })),
+  isFilmstripOpen: false,
+  setIsFilmstripOpen: (isFilmstripOpen) => set({ isFilmstripOpen }),
+  toggleFilmstrip: () => set((state) => ({ isFilmstripOpen: !state.isFilmstripOpen })),
+  isTelemetryOpen: false,
+  setIsTelemetryOpen: (isTelemetryOpen) => set({ isTelemetryOpen }),
+  toggleTelemetry: () => set((state) => ({ isTelemetryOpen: !state.isTelemetryOpen })),
   isCommandPaletteOpen: false,
-  setIsCommandPaletteOpen: (isCommandPaletteOpen) => set({ isCommandPaletteOpen }),
-  isLeftRailExpanded: false,
-  setIsLeftRailExpanded: (isLeftRailExpanded) => set({ isLeftRailExpanded })
+  setIsCommandPaletteOpen: (isCommandPaletteOpen) => set({ isCommandPaletteOpen })
 }));

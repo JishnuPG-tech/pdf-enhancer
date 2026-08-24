@@ -60,19 +60,19 @@ export const Dropzone: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 relative select-none">
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`w-full max-w-xl p-10 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative overflow-hidden ${
-          isDragging ? 'scale-[1.02] shadow-xl' : 'hover:border-[var(--accent)]'
+        className={`w-full max-w-xl p-10 rounded-3xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative overflow-hidden backdrop-blur-xl ${
+          isDragging ? 'scale-[1.02] shadow-2xl' : 'hover:border-[var(--accent)]'
         }`}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: isDragging ? 'var(--accent)' : 'var(--border)',
-          boxShadow: isDragging ? '0 0 30px var(--accent-glow)' : 'none'
+          boxShadow: isDragging ? '0 0 35px var(--accent-glow)' : '0 10px 30px rgba(0,0,0,0.3)'
         }}>
         <input
           ref={fileInputRef}
@@ -82,7 +82,7 @@ export const Dropzone: React.FC = () => {
           onChange={(e) => handleFiles(e.target.files)}
         />
 
-        {/* Upload Icon with Accent Background */}
+        {/* Upload Icon with Lucent Accent */}
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-transform duration-200"
           style={{
@@ -92,21 +92,21 @@ export const Dropzone: React.FC = () => {
           <UploadCloud className={`w-8 h-8 ${isUploading ? 'animate-bounce' : ''}`} />
         </div>
 
-        <h2 className="text-xl font-bold mb-2 tracking-tight" style={{ color: 'var(--text-primary)' }}>
-          {isUploading ? 'Analyzing Document Architecture...' : 'Drop your document PDF here'}
+        <h2 className="text-2xl font-extrabold mb-2 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          {isUploading ? 'Restoring Document Ribbon...' : 'Drop your document PDF'}
         </h2>
         <p className="text-sm max-w-sm mb-6 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           {isUploading
-            ? 'Rendering high-resolution vector matrices and page ribbons...'
-            : 'Supports camera-shot notes, scanned books, and shadow-darkened pages up to 500 pages.'}
+            ? 'Analyzing page matrices and optical noise entropy...'
+            : 'Erases reverse-side bleed-through dots, shadows, and darkness into pure #FFFFFF laser quality.'}
         </p>
 
         <button
           type="button"
           disabled={isUploading}
-          className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-95"
+          className="px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-95"
           style={{ backgroundColor: 'var(--accent)' }}>
-          {isUploading ? 'Uploading...' : 'Browse Local Files'}
+          {isUploading ? 'Uploading...' : 'Browse PDF File'}
         </button>
 
         {errorMsg && (

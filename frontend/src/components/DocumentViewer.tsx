@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Search, Split, RotateCcw, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Split, RotateCcw, Sliders, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { AdjustPanel } from './AdjustPanel';
+import { Filmstrip } from './Filmstrip';
 
 export const DocumentViewer: React.FC = () => {
   const {
@@ -26,7 +28,10 @@ export const DocumentViewer: React.FC = () => {
     sliderPosition,
     setSliderPosition,
     isLoupeActive,
-    setIsLoupeActive
+    setIsLoupeActive,
+    isAdjustOpen,
+    toggleAdjust,
+    toggleFilmstrip
   } = useAppStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,7 +43,7 @@ export const DocumentViewer: React.FC = () => {
 
   const [loupeVisible, setLoupeVisible] = useState(false);
 
-  // High-performance Preview Fetching with AbortController and Debouncing
+  // Debounced, abortable preview fetching
   const fetchPreview = useCallback(() => {
     if (!sessionId) return;
 
@@ -87,7 +92,7 @@ export const DocumentViewer: React.FC = () => {
       } finally {
         setIsLoadingPreview(false);
       }
-    }, 60); // 60ms fast debounce
+    }, 60);
   }, [
     sessionId,
     currentPage,
@@ -113,7 +118,7 @@ export const DocumentViewer: React.FC = () => {
     };
   }, [fetchPreview]);
 
-  // Keyboard navigation
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -125,14 +130,18 @@ export const DocumentViewer: React.FC = () => {
       } else if (e.key === ' ') {
         e.preventDefault();
         setSliderPosition(sliderPosition > 50 ? 0 : 100);
+      } else if (e.key.toLowerCase() === 'a') {
+        toggleAdjust();
+      } else if (e.key.toLowerCase() === 't') {
+        toggleFilmstrip();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages, setCurrentPage, sliderPosition, setSliderPosition]);
+  }, [currentPage, totalPages, setCurrentPage, sliderPosition, setSliderPosition, toggleAdjust, toggleFilmstrip]);
 
-  // Direct DOM Updates on MouseMove for 120 FPS cursor tracking with ZERO React re-renders!
+  // 120 FPS Direct DOM transforms for cursor tracking
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -144,7 +153,6 @@ export const DocumentViewer: React.FC = () => {
       setSliderPosition(Math.max(0, Math.min(100, pos)));
     }
 
-    // Direct hardware-accelerated loupe positioning
     if (isLoupeActive && loupeRef.current) {
       loupeRef.current.style.transform = `translate3d(${x - 90}px, ${y - 90}px, 0)`;
       if (loupeImgRef.current) {
@@ -163,68 +171,10 @@ export const DocumentViewer: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden"
+    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] overflow-hidden relative"
       style={{ backgroundColor: 'var(--bg-base)' }}>
-      {/* Top Canvas Toolbar */}
-      <div className="h-12 px-6 border-b flex items-center justify-between z-10 select-none"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--border)'
-        }}>
-        {/* Page Nav */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => currentPage > 0 && setCurrentPage(currentPage - 1)}
-            disabled={currentPage === 0}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-colors cursor-pointer active:scale-95"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-            title="Previous Page (←)">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-mono-hud font-semibold px-2" style={{ color: 'var(--text-primary)' }}>
-            Page {currentPage + 1} of {totalPages}
-          </span>
-          <button
-            onClick={() => currentPage < totalPages - 1 && setCurrentPage(currentPage + 1)}
-            disabled={currentPage >= totalPages - 1}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] disabled:opacity-40 transition-colors cursor-pointer active:scale-95"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-            title="Next Page (→)">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* View Mode Controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono-hud text-[var(--text-secondary)] mr-2">
-            Split: {sliderPosition}%
-          </span>
-
-          {/* Optical Loupe Toggle */}
-          <button
-            onClick={() => setIsLoupeActive(!isLoupeActive)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer active:scale-95 ${
-              isLoupeActive
-                ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)] border-[var(--border)]'
-            }`}
-            title="Toggle 2.5x Optical Magnifier Loupe">
-            <Search className="w-3.5 h-3.5" />
-            <span>2.5x Loupe</span>
-          </button>
-
-          {/* Reset Split to 50% */}
-          <button
-            onClick={() => setSliderPosition(50)}
-            className="p-1.5 rounded-lg border hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer active:scale-95"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-            title="Reset Split to Center">
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Interactive Comparison Canvas */}
+      
+      {/* Full-Bleed Document Canvas */}
       <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
@@ -236,7 +186,7 @@ export const DocumentViewer: React.FC = () => {
           setLoupeVisible(false);
         }}
         onTouchMove={handleTouchMove}
-        className="flex-1 flex items-center justify-center p-6 relative overflow-hidden select-none cursor-ew-resize">
+        className="flex-1 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden select-none cursor-ew-resize">
         
         {isLoadingPreview && !previewClean && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-30 flex items-center justify-center">
@@ -244,7 +194,7 @@ export const DocumentViewer: React.FC = () => {
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--accent)' }}>
               <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
               <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Restoring Document Ribbon...
+                Restoring Page Optical Ribbon...
               </span>
             </div>
           </div>
@@ -258,7 +208,7 @@ export const DocumentViewer: React.FC = () => {
             <img
               src={previewClean}
               alt="Cleaned Document"
-              className="max-h-[calc(100vh-10rem)] w-auto object-contain block pointer-events-none"
+              className="max-h-[calc(100vh-7rem)] w-auto object-contain block pointer-events-none"
             />
 
             {/* Foreground Clipped Image: Original Scanned */}
@@ -268,7 +218,7 @@ export const DocumentViewer: React.FC = () => {
               <img
                 src={previewRaw}
                 alt="Original Scanned Document"
-                className="max-h-[calc(100vh-10rem)] w-auto object-contain block"
+                className="max-h-[calc(100vh-7rem)] w-auto object-contain block"
               />
             </div>
 
@@ -290,15 +240,15 @@ export const DocumentViewer: React.FC = () => {
               </div>
             </div>
 
-            {/* Badges on Viewer */}
-            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-black/70 text-white/90 backdrop-blur-md border border-white/10">
-              Original Scanned
+            {/* Subtle Overlay Corner Badges */}
+            <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-black/60 text-white/80 backdrop-blur-md border border-white/10">
+              Original Scan
             </div>
-            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md text-[10px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-[var(--accent)] text-white backdrop-blur-md shadow-sm">
-              Restored (#FFFFFF)
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-[var(--accent)] text-white backdrop-blur-md shadow-sm">
+              Lucent (#FFFFFF)
             </div>
 
-            {/* 2.5x Optical Magnifier Loupe (Direct Hardware Transform) */}
+            {/* 2.5x Optical Magnifier Loupe */}
             {isLoupeActive && (
               <div
                 ref={loupeRef}
@@ -329,6 +279,89 @@ export const DocumentViewer: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Floating Bottom Control Pill (Auto-Center, Minimalist Glass) */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1.5 rounded-full border shadow-2xl backdrop-blur-2xl transition-all duration-200 select-none"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+        }}>
+        {/* Page Nav Cluster */}
+        <div className="flex items-center gap-1 px-1">
+          <button
+            onClick={() => currentPage > 0 && setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 0}
+            className="p-1 rounded-full hover:bg-[var(--bg-surface-2)] disabled:opacity-30 transition-colors cursor-pointer"
+            style={{ color: 'var(--text-primary)' }}
+            title="Previous Page (←)">
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          
+          <button
+            onClick={toggleFilmstrip}
+            className="px-2.5 py-1 rounded-full text-xs font-mono-hud font-bold hover:bg-[var(--bg-surface-2)] transition-colors cursor-pointer flex items-center gap-1"
+            style={{ color: 'var(--text-primary)' }}
+            title="Open Page Filmstrip (T)">
+            <span>{currentPage + 1}</span>
+            <span className="text-[var(--text-secondary)] font-normal">/</span>
+            <span className="text-[var(--text-secondary)]">{totalPages}</span>
+          </button>
+
+          <button
+            onClick={() => currentPage < totalPages - 1 && setCurrentPage(currentPage + 1)}
+            disabled={currentPage >= totalPages - 1}
+            className="p-1 rounded-full hover:bg-[var(--bg-surface-2)] disabled:opacity-30 transition-colors cursor-pointer"
+            style={{ color: 'var(--text-primary)' }}
+            title="Next Page (→)">
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10" />
+
+        {/* Loupe Toggle */}
+        <button
+          onClick={() => setIsLoupeActive(!isLoupeActive)}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+            isLoupeActive
+              ? 'bg-[var(--accent)] text-white shadow-sm'
+              : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)]'
+          }`}
+          title="Toggle 2.5x Optical Loupe Magnifier">
+          <Search className="w-3 h-3" />
+          <span className="hidden sm:inline">Loupe</span>
+        </button>
+
+        {/* Reset Split */}
+        <button
+          onClick={() => setSliderPosition(50)}
+          className="p-1.5 rounded-full hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)] transition-colors cursor-pointer"
+          title="Center Split (Space)">
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-[1px] h-4 bg-white/10" />
+
+        {/* Adjust Drawer Toggle */}
+        <button
+          onClick={toggleAdjust}
+          className={`flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            isAdjustOpen
+              ? 'bg-[var(--accent)] text-white shadow-sm'
+              : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]'
+          }`}
+          title="Adjust Restoration Parameters (A)">
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Adjust</span>
+        </button>
+      </div>
+
+      {/* Floating Glass Adjust Panel */}
+      <AdjustPanel />
+
+      {/* Bottom Horizontal Filmstrip */}
+      <Filmstrip />
     </div>
   );
 };
