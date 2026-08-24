@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sliders, Sparkles, Shield, Layers, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { X, SlidersHorizontal, Cpu, ScanText, Layers, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import type { CleaningMode } from '../store/useAppStore';
 import { TelemetryHUD } from './TelemetryHUD';
@@ -79,7 +79,7 @@ export const AdjustPanel: React.FC = () => {
       {/* Panel Header */}
       <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-[var(--accent)]" />
+          <SlidersHorizontal className="w-4 h-4 text-[var(--accent)]" />
           <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
             Document Tuning
           </span>
@@ -136,13 +136,13 @@ export const AdjustPanel: React.FC = () => {
               borderColor: adaptiveProfiling ? 'var(--accent)' : 'var(--border)'
             }}>
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+              <Cpu className="w-4 h-4 text-[var(--accent)]" />
               <div>
                 <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
                   AI Auto-Tuner
                 </div>
                 <div className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                  Dynamic noise metering
+                  Dynamic contrast metering
                 </div>
               </div>
             </div>
@@ -160,7 +160,7 @@ export const AdjustPanel: React.FC = () => {
               borderColor: wordEnvelope ? 'var(--accent)' : 'var(--border)'
             }}>
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-[var(--accent)]" />
+              <ScanText className="w-4 h-4 text-[var(--accent)]" />
               <div>
                 <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
                   Word Envelopes

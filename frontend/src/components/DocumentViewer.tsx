@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Search, Split, RotateCcw, Sliders, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ScanSearch, Columns2, RotateCcw, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { AdjustPanel } from './AdjustPanel';
 import { Filmstrip } from './Filmstrip';
@@ -167,7 +167,7 @@ export const DocumentViewer: React.FC = () => {
 
     // Dynamic 2.5x Optical Magnifier
     if (isLoupeActive && loupeRef.current) {
-      const loupeRadius = 90; // 180px diameter / 2
+      const loupeRadius = 90;
       const scale = 2.5;
 
       loupeRef.current.style.transform = `translate3d(${x - loupeRadius}px, ${y - loupeRadius}px, 0)`;
@@ -264,7 +264,7 @@ export const DocumentViewer: React.FC = () => {
                     backgroundColor: 'var(--accent)',
                     boxShadow: '0 0 16px var(--accent-glow)'
                   }}>
-                  <Split className="w-3 h-3" />
+                  <Columns2 className="w-3.5 h-3.5" />
                 </div>
               </div>
             )}
@@ -353,7 +353,7 @@ export const DocumentViewer: React.FC = () => {
               : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)]'
           }`}
           title="Toggle 2.5x Optical Loupe Magnifier">
-          <Search className="w-3 h-3" />
+          <ScanSearch className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">2.5x Loupe</span>
         </button>
 
@@ -376,7 +376,7 @@ export const DocumentViewer: React.FC = () => {
               : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]'
           }`}
           title="Adjust Restoration Parameters (A)">
-          <Sliders className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-3.5 h-3.5" />
           <span>Adjust</span>
         </button>
       </div>

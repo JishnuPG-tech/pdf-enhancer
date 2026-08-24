@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, ShieldCheck, Zap, Printer, AlertCircle, Sparkles, FileText } from 'lucide-react';
+import { FileUp, Cpu, ScanText, Printer, AlertCircle, Sparkles, FileText } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 const LOADING_STEPS = [
@@ -120,7 +120,7 @@ export const Dropzone: React.FC = () => {
                 backgroundColor: 'var(--accent-muted)',
                 color: 'var(--accent)'
               }}>
-              <UploadCloud className="w-7 h-7" />
+              <FileUp className="w-7 h-7" />
             </div>
 
             <h2 className="text-xl font-bold mb-1.5 tracking-tight" style={{ color: 'var(--text-primary)' }}>
@@ -160,7 +160,7 @@ export const Dropzone: React.FC = () => {
                 borderColor: 'var(--border)'
               }}>
               <div className="p-1.5 rounded-lg" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <Zap className="w-3.5 h-3.5" />
+                <Cpu className="w-3.5 h-3.5" />
               </div>
               <div>
                 <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>AI Auto-Tuner</div>
@@ -175,7 +175,7 @@ export const Dropzone: React.FC = () => {
                 borderColor: 'var(--border)'
               }}>
               <div className="p-1.5 rounded-lg" style={{ backgroundColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <ShieldCheck className="w-3.5 h-3.5" />
+                <ScanText className="w-3.5 h-3.5" />
               </div>
               <div>
                 <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Word Envelopes</div>
@@ -205,13 +205,11 @@ export const Dropzone: React.FC = () => {
           
           {/* Orbital Radar Sweep Ring */}
           <div className="relative w-28 h-28 mb-8 flex items-center justify-center">
-            {/* Outer Ambient Glow Ring */}
             <div
               className="absolute inset-0 rounded-full border-2 animate-ping opacity-20"
               style={{ borderColor: 'var(--accent)' }}
             />
             
-            {/* Rotating Orange Laser Ring */}
             <div
               className="absolute inset-1 rounded-full border-2 border-transparent border-t-[var(--accent)] border-r-[var(--accent)] animate-spin"
               style={{
@@ -220,7 +218,6 @@ export const Dropzone: React.FC = () => {
               }}
             />
 
-            {/* Inner Glass Center with PDF Icon */}
             <div
               className="w-18 h-18 rounded-full border flex items-center justify-center shadow-2xl relative z-10"
               style={{
@@ -230,7 +227,6 @@ export const Dropzone: React.FC = () => {
               <FileText className="w-8 h-8 text-[var(--accent)] animate-pulse" />
             </div>
 
-            {/* Glowing Accent Dot */}
             <div
               className="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
               style={{

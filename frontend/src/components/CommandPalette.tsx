@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Command } from 'cmdk';
-import { Sparkles, Sun, Moon, ArrowRight, ArrowLeft, RotateCcw, Shield, Layers, Sliders } from 'lucide-react';
+import { Cpu, Sun, Moon, ArrowRight, ArrowLeft, RotateCcw, ScanText, Layers, SlidersHorizontal } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export const CommandPalette: React.FC = () => {
@@ -92,7 +92,7 @@ export const CommandPalette: React.FC = () => {
                   setIsCommandPaletteOpen(false);
                 }}
                 className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]">
-                <Sliders className="w-4 h-4 text-[var(--accent)]" />
+                <SlidersHorizontal className="w-4 h-4 text-[var(--accent)]" />
                 <span>Set Mode: Laser Binarized (1-bit Pure B&W)</span>
               </Command.Item>
               <Command.Item
@@ -114,7 +114,7 @@ export const CommandPalette: React.FC = () => {
                   setIsCommandPaletteOpen(false);
                 }}
                 className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]">
-                <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+                <Cpu className="w-4 h-4 text-[var(--accent)]" />
                 <span>Toggle AI Dynamic Auto-Tuner ({adaptiveProfiling ? 'Disable' : 'Enable'})</span>
               </Command.Item>
               <Command.Item
@@ -123,7 +123,7 @@ export const CommandPalette: React.FC = () => {
                   setIsCommandPaletteOpen(false);
                 }}
                 className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]">
-                <Shield className="w-4 h-4 text-[var(--accent)]" />
+                <ScanText className="w-4 h-4 text-[var(--accent)]" />
                 <span>Toggle Word-Level Envelope Protection ({wordEnvelope ? 'Disable' : 'Enable'})</span>
               </Command.Item>
               <Command.Item

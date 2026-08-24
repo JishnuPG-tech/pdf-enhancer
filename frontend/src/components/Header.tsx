@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sun, Moon, Command, Download, FileText, Upload } from 'lucide-react';
+import { Sun, Moon, Command, ArrowDownToLine, FileText, Upload } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export const Header: React.FC = () => {
@@ -54,13 +54,12 @@ export const Header: React.FC = () => {
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border)'
       }}>
-      {/* Brand: lucent with orange dot over 'u' */}
+      {/* Brand Wordmark */}
       <div className="flex items-center gap-4">
         <div
           onClick={filename ? resetDocument : undefined}
           className="flex items-center gap-1.5 cursor-pointer group"
           title="lucent — Click to upload a new document">
-          {/* Custom Lucent Wordmark */}
           <div className="relative font-bold text-lg tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}>
             l
             <span className="relative">
@@ -85,7 +84,7 @@ export const Header: React.FC = () => {
               borderColor: 'var(--border)',
               color: 'var(--text-secondary)'
             }}>
-            <FileText className="w-3 h-3 text-[var(--accent)]" />
+            <FileText className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span className="max-w-[140px] truncate font-medium" style={{ color: 'var(--text-primary)' }}>
               {filename}
             </span>
@@ -97,8 +96,8 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-2.5">
-        {/* Upload New Document Button */}
+      <div className="flex items-center gap-2">
+        {/* Upload Another PDF */}
         {filename && (
           <button
             onClick={resetDocument}
@@ -107,13 +106,13 @@ export const Header: React.FC = () => {
               borderColor: 'var(--border)',
               color: 'var(--text-secondary)'
             }}
-            title="Upload Another PDF">
+            title="Upload Another Document">
             <Upload className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Upload</span>
           </button>
         )}
 
-        {/* Backend Latency Pill */}
+        {/* Latency Pill */}
         <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono-hud border"
           style={{
             backgroundColor: 'var(--bg-surface-2)',
@@ -141,7 +140,7 @@ export const Header: React.FC = () => {
           <span className="font-mono-hud text-[10px]">⌘K</span>
         </button>
 
-        {/* Theme Toggle Button */}
+        {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className="p-1.5 rounded-lg border transition-all cursor-pointer hover:bg-[var(--bg-surface-2)] active:scale-95"
@@ -154,13 +153,13 @@ export const Header: React.FC = () => {
           {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
         </button>
 
-        {/* Download Button */}
+        {/* Export PDF Button */}
         {isComplete && taskId && (
           <button
             onClick={handleDownload}
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
             style={{ backgroundColor: 'var(--accent)' }}>
-            <Download className="w-3.5 h-3.5" />
+            <ArrowDownToLine className="w-3.5 h-3.5" />
             <span>Export PDF</span>
           </button>
         )}
