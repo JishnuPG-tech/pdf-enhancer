@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sun, Moon, Command, ArrowDownToLine, FileText, Upload } from 'lucide-react';
+import { Sun, Moon, Command, ArrowDownToLine, FileText, Upload, Zap, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export const Header: React.FC = () => {
@@ -11,6 +11,19 @@ export const Header: React.FC = () => {
     totalPages,
     isComplete,
     taskId,
+    sessionId,
+    isProcessing,
+    startBatch,
+    pageRange,
+    mode,
+    sauvolaK,
+    whiteCutoff,
+    blackCutoff,
+    despeckle,
+    marginPercent,
+    contrastThresh,
+    adaptiveProfiling,
+    wordEnvelope,
     setIsCommandPaletteOpen,
     resetDocument,
     latencyMs
@@ -45,6 +58,38 @@ export const Header: React.FC = () => {
   const handleDownload = () => {
     if (taskId && isComplete) {
       window.open(`api/download/${taskId}`, '_blank');
+    }
+  };
+
+  const handleCleanDocument = async () => {
+    if (!sessionId || isProcessing) return;
+
+    try {
+      const res = await fetch('api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          pages: pageRange || 'all',
+          mode,
+          sauvola_k: sauvolaK,
+          white_cutoff: whiteCutoff,
+          black_cutoff: blackCutoff,
+          despeckle,
+          margin_percent: marginPercent,
+          contrast_thresh: contrastThresh,
+          adaptive: adaptiveProfiling,
+          word_envelope: wordEnvelope,
+          dpi: 300
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        startBatch(data.task_id);
+      }
+    } catch (e) {
+      console.error('Batch start error:', e);
     }
   };
 
@@ -97,6 +142,39 @@ export const Header: React.FC = () => {
 
       {/* Right Controls */}
       <div className="flex items-center gap-2">
+        {/* Clean & Export Document / Download in Header */}
+        {filename && (
+          isComplete && taskId ? (
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-lg text-xs font-bold text-white transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95 animate-pulse"
+              style={{ backgroundColor: 'var(--success)' }}
+              title="Download Clean PDF">
+              <ArrowDownToLine className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleCleanDocument}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold text-white transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--accent)' }}
+              title="Clean & Export Full Document">
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Cleaning...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5 fill-white" />
+                  <span>Clean & Export</span>
+                </>
+              )}
+            </button>
+          )
+        )}
+
         {/* Upload Another PDF */}
         {filename && (
           <button
@@ -152,17 +230,6 @@ export const Header: React.FC = () => {
           title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
           {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
         </button>
-
-        {/* Export PDF Button */}
-        {isComplete && taskId && (
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
-            style={{ backgroundColor: 'var(--accent)' }}>
-            <ArrowDownToLine className="w-3.5 h-3.5" />
-            <span>Export PDF</span>
-          </button>
-        )}
       </div>
     </header>
   );

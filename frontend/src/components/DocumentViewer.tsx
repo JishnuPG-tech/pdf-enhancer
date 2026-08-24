@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, ScanSearch, Columns2, RotateCcw, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ScanSearch, Columns2, RotateCcw, SlidersHorizontal, Loader2, Zap, Download } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { AdjustPanel } from './AdjustPanel';
 import { Filmstrip } from './Filmstrip';
@@ -28,7 +28,12 @@ export const DocumentViewer: React.FC = () => {
     setIsLoupeActive,
     isAdjustOpen,
     toggleAdjust,
-    toggleFilmstrip
+    toggleFilmstrip,
+    pageRange,
+    startBatch,
+    isProcessing,
+    isComplete,
+    taskId
   } = useAppStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,6 +149,39 @@ export const DocumentViewer: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages, setCurrentPage, updateSplitPosition, toggleAdjust, toggleFilmstrip]);
+
+  // Direct Batch Clean Trigger
+  const handleCleanDocument = async () => {
+    if (!sessionId || isProcessing) return;
+
+    try {
+      const res = await fetch('api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          pages: pageRange || 'all',
+          mode,
+          sauvola_k: sauvolaK,
+          white_cutoff: whiteCutoff,
+          black_cutoff: blackCutoff,
+          despeckle,
+          margin_percent: marginPercent,
+          contrast_thresh: contrastThresh,
+          adaptive: adaptiveProfiling,
+          word_envelope: wordEnvelope,
+          dpi: 300
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        startBatch(data.task_id);
+      }
+    } catch (e) {
+      console.error('Batch start error:', e);
+    }
+  };
 
   // Pointer Events: Slider Dragging & 120 FPS Optical Loupe Tracking
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -305,7 +343,7 @@ export const DocumentViewer: React.FC = () => {
       </div>
 
       {/* Floating Bottom Control Pill */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1 rounded-full border shadow-2xl backdrop-blur-2xl transition-all duration-200 select-none"
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-1.5 rounded-full border shadow-2xl backdrop-blur-2xl transition-all duration-200 select-none"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border)',
@@ -370,15 +408,54 @@ export const DocumentViewer: React.FC = () => {
         {/* Adjust Drawer Toggle */}
         <button
           onClick={toggleAdjust}
-          className={`flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
             isAdjustOpen
-              ? 'bg-[var(--accent)] text-white shadow-sm'
-              : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-primary)]'
+              ? 'bg-[var(--bg-surface-2)] text-[var(--accent)] border border-[var(--accent)]'
+              : 'hover:bg-[var(--bg-surface-2)] text-[var(--text-secondary)]'
           }`}
-          title="Adjust Restoration Parameters (A)">
+          title="Fine-tune parameters (A)">
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Adjust</span>
+          <span className="hidden sm:inline">Adjust</span>
         </button>
+
+        {/* PRIMARY ACTION: Clean Document / Download Clean PDF */}
+        {isComplete && taskId ? (
+          <a
+            href={`api/download/${taskId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 animate-pulse"
+            style={{
+              backgroundColor: 'var(--success)',
+              boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)'
+            }}
+            title="Download Clean PDF">
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Clean PDF</span>
+          </a>
+        ) : (
+          <button
+            onClick={handleCleanDocument}
+            disabled={isProcessing}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
+            style={{
+              backgroundColor: 'var(--accent)',
+              boxShadow: '0 0 18px var(--accent-glow)'
+            }}
+            title="Clean all document pages with current settings">
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Cleaning...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="w-3.5 h-3.5 fill-white" />
+                <span>Clean Document</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Floating Glass Adjust Panel */}
