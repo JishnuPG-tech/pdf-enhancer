@@ -82,3 +82,23 @@ body {
 .pulse-glow {
   animation: accent-pulse 2s infinite ease-in-out;
 }
+
+/* Laser scan line animation for upload loading */
+@keyframes laser-sweep {
+  0% {
+    top: 0%;
+    opacity: 0.3;
+  }
+  50% {
+    top: 50%;
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.3;
+  }
+}
+
+.animate-laser {
+  animation: laser-sweep 1.8s infinite ease-in-out alternate;
+}
