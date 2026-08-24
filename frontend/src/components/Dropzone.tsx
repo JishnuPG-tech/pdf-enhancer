@@ -3,10 +3,10 @@ import { UploadCloud, ShieldCheck, Zap, Printer, AlertCircle, Sparkles, FileText
 import { useAppStore } from '../store/useAppStore';
 
 const LOADING_STAGES = [
-  { step: '01', title: 'Parsing document vector matrix...', detail: 'Extracting high-resolution page ribbons' },
-  { step: '02', title: 'Profiling optical noise energy (E_noise)...', detail: 'Detecting reverse-side bleed-through dots' },
-  { step: '03', title: 'Synthesizing word envelopes...', detail: 'Protecting characters, math symbols & i-dots' },
-  { step: '04', title: 'Rendering pure #FFFFFF canvas...', detail: 'Preparing 120 FPS interactive viewport' }
+  { step: '01', title: 'Parsing document vector matrix', detail: 'Decompressing raster layers & page geometry' },
+  { step: '02', title: 'Profiling optical noise energy (E_noise)', detail: 'Detecting bleed-through dots & dark gradients' },
+  { step: '03', title: 'Synthesizing word protection envelopes', detail: 'Locking character contours & math notations' },
+  { step: '04', title: 'Rendering pure #FFFFFF canvas', detail: 'Calibrating 120 FPS interactive viewport' }
 ];
 
 export const Dropzone: React.FC = () => {
@@ -18,7 +18,7 @@ export const Dropzone: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cycle through loading stage animation while uploading
+  // Smooth stage progression while uploading
   useEffect(() => {
     if (!isUploading) {
       setCurrentStageIdx(0);
@@ -27,7 +27,7 @@ export const Dropzone: React.FC = () => {
 
     const interval = setInterval(() => {
       setCurrentStageIdx((prev) => (prev < LOADING_STAGES.length - 1 ? prev + 1 : prev));
-    }, 600);
+    }, 650);
 
     return () => clearInterval(interval);
   }, [isUploading]);
@@ -61,10 +61,10 @@ export const Dropzone: React.FC = () => {
 
       const data = await response.json();
       
-      // Allow the final stage of the animation to complete gracefully
+      // Allow animation stages to finish cleanly
       setTimeout(() => {
         setDocument(data.session_id, data.filename, data.total_pages, data.thumbnails);
-      }, 400);
+      }, 500);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error uploading document.');
       setIsUploading(false);
@@ -87,7 +87,7 @@ export const Dropzone: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 relative select-none">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 relative select-none">
       {!isUploading ? (
         <>
           {/* Main Dropzone Card */}
@@ -96,13 +96,13 @@ export const Dropzone: React.FC = () => {
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`w-full max-w-xl p-10 rounded-3xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative overflow-hidden backdrop-blur-xl ${
+            className={`w-full max-w-xl p-12 rounded-3xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative overflow-hidden backdrop-blur-xl ${
               isDragging ? 'scale-[1.02] shadow-2xl' : 'hover:border-[var(--accent)]'
             }`}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: isDragging ? 'var(--accent)' : 'var(--border)',
-              boxShadow: isDragging ? '0 0 35px var(--accent-glow)' : '0 10px 30px rgba(0,0,0,0.3)'
+              boxShadow: isDragging ? '0 0 40px var(--accent-glow)' : '0 10px 30px rgba(0,0,0,0.3)'
             }}>
             <input
               ref={fileInputRef}
@@ -199,57 +199,70 @@ export const Dropzone: React.FC = () => {
           </div>
         </>
       ) : (
-        /* Cinematic High-Tech Ingestion & Scanning Animation */
+        /* Expansive, Uncompressed Cinematic Ingestion Stage */
         <div
-          className="w-full max-w-lg p-8 rounded-3xl border shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl animate-in zoom-in-95 duration-200"
+          className="w-full max-w-xl p-8 sm:p-10 rounded-3xl border shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl animate-in zoom-in-95 duration-200"
           style={{
             backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--accent)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow)'
+            borderColor: 'var(--border)',
+            boxShadow: '0 30px 70px rgba(0,0,0,0.7), 0 0 40px var(--accent-glow)'
           }}>
           
-          {/* Animated Holographic Document with Laser Scan */}
-          <div className="w-36 h-48 rounded-2xl border relative overflow-hidden mb-6 flex flex-col items-center justify-center p-3 shadow-inner"
+          {/* Laser Scanner Document Blueprint */}
+          <div className="w-48 h-60 rounded-2xl border-2 relative overflow-hidden mb-6 flex flex-col items-center justify-between p-4 shadow-2xl transition-all duration-300"
             style={{
               backgroundColor: 'var(--bg-surface-2)',
-              borderColor: 'var(--border)'
+              borderColor: 'var(--accent-glow)',
+              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
             }}>
-            {/* Simulated text lines */}
-            <div className="w-full space-y-2 opacity-30">
-              <div className="h-2 w-3/4 bg-white/40 rounded-full" />
+            
+            {/* Header simulated text lines */}
+            <div className="w-full flex items-center justify-between opacity-40 mb-2">
+              <div className="h-2 w-12 bg-white/50 rounded-full" />
+              <div className="h-1.5 w-6 bg-[var(--accent)] rounded-full" />
+            </div>
+
+            {/* Document body preview simulation */}
+            <div className="w-full space-y-2.5 opacity-30 flex-1 flex flex-col justify-center">
               <div className="h-2 w-full bg-white/40 rounded-full" />
               <div className="h-2 w-5/6 bg-white/40 rounded-full" />
-              <div className="h-2 w-2/3 bg-white/40 rounded-full" />
               <div className="h-2 w-4/5 bg-white/40 rounded-full" />
+              <div className="h-2 w-full bg-white/40 rounded-full" />
+              <div className="h-2 w-3/4 bg-white/40 rounded-full" />
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <FileText className="w-10 h-10 text-[var(--accent)] opacity-80" />
+            <div className="w-full flex justify-center opacity-30 mt-2">
+              <div className="h-1.5 w-16 bg-white/30 rounded-full" />
             </div>
 
-            {/* Glowing Orange Laser Sweep Line */}
+            {/* Centered Watermark Icon */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+              <FileText className="w-14 h-14 text-[var(--accent)]" />
+            </div>
+
+            {/* Radiant Glowing Orange Laser Beam */}
             <div
-              className="absolute left-0 right-0 h-1 z-20 animate-laser"
+              className="absolute left-0 right-0 h-1.5 z-20 animate-laser"
               style={{
                 backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 15px var(--accent), 0 0 30px var(--accent-glow)'
+                boxShadow: '0 0 20px var(--accent), 0 0 35px var(--accent-glow)'
               }}
             />
           </div>
 
-          {/* Filename & Heading */}
-          <div className="flex items-center gap-2 mb-1">
+          {/* Document Title Header */}
+          <div className="flex items-center gap-2 mb-1.5">
             <Sparkles className="w-4 h-4 text-[var(--accent)] animate-spin" />
-            <h3 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+            <h3 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
               Restoring Document Matrix
             </h3>
           </div>
-          <p className="text-xs font-mono-hud text-[var(--text-secondary)] mb-6 truncate max-w-xs">
+          <p className="text-xs font-mono-hud text-[var(--text-secondary)] mb-6 truncate max-w-sm">
             {uploadFileName || 'Processing document...'}
           </p>
 
-          {/* Step-by-Step Telemetry Feed */}
-          <div className="w-full space-y-2.5 mb-6 text-left">
+          {/* 4-Stage Telemetry Feed */}
+          <div className="w-full space-y-2 mb-6 text-left">
             {LOADING_STAGES.map((stage, idx) => {
               const isDone = currentStageIdx > idx;
               const isCurrent = currentStageIdx === idx;
@@ -257,15 +270,15 @@ export const Dropzone: React.FC = () => {
               return (
                 <div
                   key={stage.step}
-                  className={`p-2.5 rounded-xl border transition-all duration-300 flex items-center justify-between ${
+                  className={`p-3 rounded-xl border transition-all duration-300 flex items-center justify-between ${
                     isCurrent
-                      ? 'border-[var(--accent)] bg-[var(--accent-muted)] shadow-sm'
+                      ? 'border-[var(--accent)] bg-[var(--accent-muted)] shadow-md scale-[1.01]'
                       : isDone
-                      ? 'border-emerald-500/30 bg-emerald-500/5 opacity-80'
-                      : 'border-[var(--border)] opacity-30'
+                      ? 'border-emerald-500/30 bg-emerald-500/5 opacity-90'
+                      : 'border-[var(--border)] opacity-35'
                   }`}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono-hud text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/20 text-[var(--text-secondary)]">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono-hud text-[11px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-[var(--text-secondary)]">
                       {stage.step}
                     </span>
                     <div>
@@ -281,7 +294,7 @@ export const Dropzone: React.FC = () => {
                   {isDone ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                   ) : isCurrent ? (
-                    <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping flex-shrink-0" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] animate-ping flex-shrink-0" />
                   ) : null}
                 </div>
               );
@@ -289,13 +302,13 @@ export const Dropzone: React.FC = () => {
           </div>
 
           {/* Glowing Animated Progress Bar */}
-          <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden border border-white/5 relative">
+          <div className="w-full bg-black/40 h-2.5 rounded-full overflow-hidden border border-white/10 relative">
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${((currentStageIdx + 1) / LOADING_STAGES.length) * 100}%`,
                 backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 10px var(--accent-glow)'
+                boxShadow: '0 0 14px var(--accent-glow)'
               }}
             />
           </div>
