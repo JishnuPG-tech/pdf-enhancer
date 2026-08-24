@@ -36,7 +36,6 @@ export const DocumentViewer: React.FC = () => {
   const dividerRef = useRef<HTMLDivElement>(null);
   const clipLayerRef = useRef<HTMLDivElement>(null);
   const loupeRef = useRef<HTMLDivElement>(null);
-  const loupeImgRef = useRef<HTMLImageElement>(null);
 
   const isDraggingRef = useRef(false);
   const splitPosRef = useRef(50);
@@ -115,7 +114,7 @@ export const DocumentViewer: React.FC = () => {
     setIsLoadingPreview
   ]);
 
-  // Fetch when page or settings change
+  // Fetch on page change
   useEffect(() => {
     fetchPreview(currentPage);
     return () => {
@@ -123,7 +122,7 @@ export const DocumentViewer: React.FC = () => {
     };
   }, [currentPage, fetchPreview]);
 
-  // Keyboard navigation
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -146,11 +145,13 @@ export const DocumentViewer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages, setCurrentPage, updateSplitPosition, toggleAdjust, toggleFilmstrip]);
 
-  // Pointer-Events-Based 120 FPS Hardware-Accelerated Slider Dragging
+  // Pointer Events: Slider Dragging & 120 FPS Optical Loupe Tracking
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    isDraggingRef.current = true;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    handlePointerMove(e);
+    if (!isLoupeActive) {
+      isDraggingRef.current = true;
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      handlePointerMove(e);
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -164,12 +165,22 @@ export const DocumentViewer: React.FC = () => {
       updateSplitPosition(pos);
     }
 
-    // Direct hardware loupe transform
+    // Dynamic 2.5x Optical Magnifier
     if (isLoupeActive && loupeRef.current) {
-      loupeRef.current.style.transform = `translate3d(${x - 90}px, ${y - 90}px, 0)`;
-      if (loupeImgRef.current) {
-        loupeImgRef.current.style.transformOrigin = `${x}px ${y}px`;
-      }
+      const loupeRadius = 90; // 180px diameter / 2
+      const scale = 2.5;
+
+      // Position loupe centered at cursor
+      loupeRef.current.style.transform = `translate3d(${x - loupeRadius}px, ${y - loupeRadius}px, 0)`;
+
+      // Set dynamic background coordinates matching exact cursor position on the document
+      const bgW = rect.width * scale;
+      const bgH = rect.height * scale;
+      const bgX = -(x * scale - loupeRadius);
+      const bgY = -(y * scale - loupeRadius);
+
+      loupeRef.current.style.backgroundSize = `${bgW}px ${bgH}px`;
+      loupeRef.current.style.backgroundPosition = `${bgX}px ${bgY}px`;
     }
   };
 
@@ -188,11 +199,6 @@ export const DocumentViewer: React.FC = () => {
       <div
         ref={containerRef}
         onPointerMove={handlePointerMove}
-        onMouseEnter={() => setLoupeVisible(true)}
-        onMouseLeave={() => {
-          isDraggingRef.current = false;
-          setLoupeVisible(false);
-        }}
         className="flex-1 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
         
         {/* Loading Spinner Ribbon */}
@@ -212,7 +218,14 @@ export const DocumentViewer: React.FC = () => {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className="relative max-h-full max-w-full aspect-auto rounded-xl shadow-2xl overflow-hidden border touch-none cursor-ew-resize"
+            onMouseEnter={() => setLoupeVisible(true)}
+            onMouseLeave={() => {
+              isDraggingRef.current = false;
+              setLoupeVisible(false);
+            }}
+            className={`relative max-h-full max-w-full aspect-auto rounded-xl shadow-2xl overflow-hidden border touch-none ${
+              isLoupeActive ? 'cursor-crosshair' : 'cursor-ew-resize'
+            }`}
             style={{ borderColor: 'var(--border)' }}>
             
             {/* Cleaned Document (Bottom Layer) */}
@@ -236,25 +249,27 @@ export const DocumentViewer: React.FC = () => {
               />
             </div>
 
-            {/* 120 FPS Hardware-Accelerated Divider */}
-            <div
-              ref={dividerRef}
-              className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20"
-              style={{
-                left: `${splitPosRef.current}%`,
-                backgroundColor: 'var(--accent)',
-                boxShadow: '0 0 10px var(--accent-glow)',
-                willChange: 'left'
-              }}>
+            {/* Split Slider Divider (Hidden if Loupe Active for unobstructed viewing) */}
+            {!isLoupeActive && (
               <div
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-2xl cursor-grab active:cursor-grabbing border-2 border-white pointer-events-auto"
+                ref={dividerRef}
+                className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20"
                 style={{
+                  left: `${splitPosRef.current}%`,
                   backgroundColor: 'var(--accent)',
-                  boxShadow: '0 0 18px var(--accent-glow)'
+                  boxShadow: '0 0 10px var(--accent-glow)',
+                  willChange: 'left'
                 }}>
-                <Split className="w-3.5 h-3.5" />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-2xl cursor-grab active:cursor-grabbing border-2 border-white pointer-events-auto"
+                  style={{
+                    backgroundColor: 'var(--accent)',
+                    boxShadow: '0 0 18px var(--accent-glow)'
+                  }}>
+                  <Split className="w-3.5 h-3.5" />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Top Corner Badges */}
             <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-mono-hud font-bold tracking-wider uppercase z-10 bg-black/70 text-white/90 backdrop-blur-md border border-white/10 pointer-events-none">
@@ -264,29 +279,24 @@ export const DocumentViewer: React.FC = () => {
               Lucent (#FFFFFF)
             </div>
 
-            {/* 2.5x Optical Magnifier Loupe */}
+            {/* Dynamic 2.5x Optical Magnifier Loupe */}
             {isLoupeActive && (
               <div
                 ref={loupeRef}
-                className={`absolute top-0 left-0 pointer-events-none z-30 rounded-full border-2 shadow-2xl overflow-hidden transition-opacity duration-150 ${
+                className={`absolute top-0 left-0 pointer-events-none z-30 rounded-full border-2 shadow-2xl transition-opacity duration-150 ${
                   loupeVisible ? 'opacity-100' : 'opacity-0'
                 }`}
                 style={{
                   width: '180px',
                   height: '180px',
+                  backgroundImage: `url(${previewClean})`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundColor: '#ffffff',
                   borderColor: 'var(--accent)',
-                  boxShadow: '0 0 25px var(--accent-glow), 0 10px 30px rgba(0,0,0,0.6)',
-                  willChange: 'transform'
-                }}>
-                <div className="w-full h-full relative" style={{ transform: 'scale(2.5)' }}>
-                  <img
-                    ref={loupeImgRef}
-                    src={previewClean}
-                    alt="Loupe Clean"
-                    className="absolute inset-0 w-full h-full object-contain"
-                  />
-                </div>
-              </div>
+                  boxShadow: '0 0 25px var(--accent-glow), 0 10px 30px rgba(0,0,0,0.7)',
+                  willChange: 'transform, background-position'
+                }}
+              />
             )}
           </div>
         ) : (
@@ -346,7 +356,7 @@ export const DocumentViewer: React.FC = () => {
           }`}
           title="Toggle 2.5x Optical Loupe Magnifier">
           <Search className="w-3 h-3" />
-          <span className="hidden sm:inline">Loupe</span>
+          <span className="hidden sm:inline">2.5x Loupe</span>
         </button>
 
         {/* Reset Split to 50% */}
