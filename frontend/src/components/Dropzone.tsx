@@ -269,8 +269,7 @@ export const Dropzone: React.FC = () => {
           </div>
 
           {/* Heading & File Name */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <Sparkles className="w-4 h-4 text-[var(--accent)] animate-spin" />
+          <div className="mb-1.5">
             <h3 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
               Ingesting Document Matrix
             </h3>
