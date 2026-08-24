@@ -4,3 +4,6 @@ temp_verify/
 temp_test_*
 *.log
 .DS_Store
+*.pdf
+node_modules/
+dist/
