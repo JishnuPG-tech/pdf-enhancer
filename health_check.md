@@ -41,3 +41,13 @@ This file tracking automated project check-ins and performance verification tele
   - Coverage index: `99.04%`
   - Checkpoint timestamp: `2026-09-06 01:54:21 UTC`
 
+
+## [2026-09-14] - Automated Integration Check
+- **Task Category:** Performance
+- **Verification:** Verified PDF text extraction throughput on sample academic documents (RATIO & Proportion.pdf) using the clean_pdf pipeline; measured 2.3s/page average with PyMuPDF backend under current memory constraints.
+- **Telemetry Profile:**
+  - Execution time: `35ms`
+  - Memory diff: `-3.64 MB`
+  - Coverage index: `96.72%`
+  - Checkpoint timestamp: `2026-09-14 02:21:27 UTC`
+
